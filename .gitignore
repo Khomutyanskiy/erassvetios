@@ -1,0 +1,36 @@
+# Xcode
+.DS_Store
+build/
+DerivedData/
+*.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+xcuserdata/
+*.xccheckout
+*.moved-aside
+*.xcuserstate
+*.xcscmblueprint
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Swift Package Manager
+.build/
+.swiftpm/
+
+# CocoaPods (unused here, kept just in case)
+Pods/
+
+# Firebase / Functions
+functions/node_modules/
+functions/.env
+functions/firebase-debug.log
+firebase-debug.log
+.firebase/
+
+# macOS
+.AppleDouble
+.LSOverride
+Icon?
