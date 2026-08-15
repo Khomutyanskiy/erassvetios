@@ -13,6 +13,7 @@ struct AuthView: View {
     @State private var email = ""
     @State private var password = ""
     @State private var confirmPassword = ""
+    @State private var showForgotPassword = false
 
     private var passwordsMismatch: Bool {
         isSignUp && !confirmPassword.isEmpty && password != confirmPassword
@@ -91,6 +92,19 @@ struct AuthView: View {
                                     .stroke(passwordsMismatch ? Color.red : AppTheme.cardBorder, lineWidth: 1)
                             )
                     }
+
+                    if !isSignUp {
+                        HStack {
+                            Spacer()
+                            Button {
+                                showForgotPassword = true
+                            } label: {
+                                Text("Забыли пароль?")
+                                    .font(.footnote)
+                                    .foregroundColor(AppTheme.accent)
+                            }
+                        }
+                    }
                 }
 
                 if passwordsMismatch {
@@ -150,6 +164,9 @@ struct AuthView: View {
                 Spacer()
             }
             .padding(24)
+        }
+        .sheet(isPresented: $showForgotPassword) {
+            ForgotPasswordView(email: email).environmentObject(authViewModel)
         }
     }
 }

@@ -223,6 +223,77 @@ final class AuthViewModel: ObservableObject {
         }
     }
 
+    /// Permanently deletes the signed-in account: re-authenticates with the
+    /// given password (Firebase requires a *recent* sign-in before allowing
+    /// `Auth.currentUser.delete()`), best-effort cleans up this user's
+    /// Firestore data and Storage files, then deletes the Auth account
+    /// itself. Returns false (with `errorMessage` set) on any failure —
+    /// most commonly a wrong password.
+    func deleteAccount(password: String) async -> Bool {
+        guard let currentUser = Auth.auth().currentUser, let email = currentUser.email, !email.isEmpty else {
+            errorMessage = "Не удалось определить аккаунт для удаления."
+            return false
+        }
+        isLoading = true
+        errorMessage = nil
+        do {
+            let credential = EmailAuthProvider.credential(withEmail: email, password: password)
+            try await currentUser.reauthenticate(with: credential)
+
+            let uid = currentUser.uid
+            let avatarURL = currentUser.photoURL?.absoluteString
+            await deleteUserData(uid: uid, avatarURL: avatarURL)
+
+            try await currentUser.delete()
+            user = nil
+            isLoading = false
+            return true
+        } catch {
+            errorMessage = error.localizedDescription
+            isLoading = false
+            return false
+        }
+    }
+
+    /// Best-effort cleanup of everything this user owns before the Auth
+    /// account itself is deleted: their ads (+ photos), favorites, avatar,
+    /// public profile mirror, chats they're part of, and their own profile
+    /// document. Message subcollections under deleted chats are left behind
+    /// — same as the app's existing single-chat delete flow — since they're
+    /// unreachable via security rules once the parent chat doc is gone.
+    private func deleteUserData(uid: String, avatarURL: String?) async {
+        let db = Firestore.firestore()
+
+        if let adsSnapshot = try? await db.collection("ads").whereField("sellerId", isEqualTo: uid).getDocuments() {
+            for doc in adsSnapshot.documents {
+                let imageURLs = doc.data()["imageURLs"] as? [String] ?? []
+                try? await doc.reference.delete()
+                for url in imageURLs {
+                    await StorageService.deleteImage(url: url)
+                }
+            }
+        }
+
+        if let favoritesSnapshot = try? await db.collection("users").document(uid).collection("favorites").getDocuments() {
+            for doc in favoritesSnapshot.documents {
+                try? await doc.reference.delete()
+            }
+        }
+
+        if let chatsSnapshot = try? await db.collection("chats").whereField("participants", arrayContains: uid).getDocuments() {
+            for doc in chatsSnapshot.documents {
+                try? await doc.reference.delete()
+            }
+        }
+
+        if let avatarURL {
+            await StorageService.deleteImage(url: avatarURL)
+        }
+
+        try? await db.collection("user_public").document(uid).delete()
+        try? await db.collection("users").document(uid).delete()
+    }
+
     func resetPassword(email: String) async {
         isLoading = true
         errorMessage = nil

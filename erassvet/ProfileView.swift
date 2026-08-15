@@ -14,6 +14,7 @@ struct ProfileView: View {
     @State private var isMyListingsExpanded = true
     @State private var showHelp = false
     @State private var showAdminPanel = false
+    @State private var showDeleteAccount = false
     @State private var editingAd: Ad?
 
     var body: some View {
@@ -141,6 +142,22 @@ struct ProfileView: View {
                                 }
                                 .padding(16)
                             }
+
+                            Divider().overlay(AppTheme.cardBorder)
+
+                            Button {
+                                showDeleteAccount = true
+                            } label: {
+                                HStack {
+                                    Image(systemName: "trash")
+                                        .foregroundColor(Color(hex: "E8352B"))
+                                        .frame(width: 24)
+                                    Text("Удалить аккаунт")
+                                        .foregroundColor(Color(hex: "E8352B"))
+                                    Spacer()
+                                }
+                                .padding(16)
+                            }
                         }
                         .background(AppTheme.card)
                         .clipShape(RoundedRectangle(cornerRadius: 16))
@@ -218,6 +235,9 @@ struct ProfileView: View {
         }
         .sheet(isPresented: $showAdminPanel) {
             AdminPanelView()
+        }
+        .sheet(isPresented: $showDeleteAccount) {
+            DeleteAccountView().environmentObject(authViewModel)
         }
         .sheet(item: $editingAd) { ad in
             PostAdView(existingAd: ad).environmentObject(authViewModel)
