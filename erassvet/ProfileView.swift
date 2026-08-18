@@ -355,7 +355,7 @@ private struct MyAdRow: View {
                     HStack(spacing: 4) {
                         Image(systemName: "eye")
                             .font(.caption2)
-                        Text("\(ad.views) \(viewsWord(ad.views))")
+                        Text(ad.viewsText)
                             .font(.caption)
                     }
                     .foregroundColor(AppTheme.textSecondary)
@@ -373,17 +373,6 @@ private struct MyAdRow: View {
             .overlay(RoundedRectangle(cornerRadius: 16).stroke(AppTheme.cardBorder, lineWidth: 1))
         }
         .buttonStyle(.plain)
-    }
-
-    private func viewsWord(_ count: Int) -> String {
-        let rem100 = count % 100
-        let rem10 = count % 10
-        if rem100 >= 11 && rem100 <= 14 { return "просмотров" }
-        switch rem10 {
-        case 1: return "просмотр"
-        case 2, 3, 4: return "просмотра"
-        default: return "просмотров"
-        }
     }
 
     @ViewBuilder

@@ -68,6 +68,8 @@ final class AdsViewModel: ObservableObject {
         sellerPhotoURL: String?,
         dealType: AdDealType,
         contacts: UserContacts,
+        adContactName: String,
+        adContactValue: String,
         newImages: [UIImage],
         initialStatus: AdStatus = .active
     ) async -> Bool {
@@ -93,6 +95,8 @@ final class AdsViewModel: ObservableObject {
                 sellerPhotoURL: sellerPhotoURL,
                 dealType: dealType,
                 contacts: contacts,
+                adContactName: adContactName,
+                adContactValue: adContactValue,
                 imageURLs: imageURLs,
                 initialStatus: initialStatus
             )
@@ -123,6 +127,8 @@ final class AdsViewModel: ObservableObject {
         longitude: Double?,
         dealType: AdDealType,
         contacts: UserContacts,
+        adContactName: String,
+        adContactValue: String,
         sellerId: String,
         keptImageURLs: [String],
         newImages: [UIImage]
@@ -144,6 +150,8 @@ final class AdsViewModel: ObservableObject {
                 longitude: longitude,
                 dealType: dealType,
                 contacts: contacts,
+                adContactName: adContactName,
+                adContactValue: adContactValue,
                 imageURLs: keptImageURLs + uploadedURLs
             )
             try await Firestore.firestore().collection("ads").document(id).updateData(data)
@@ -218,9 +226,14 @@ final class AdsViewModel: ObservableObject {
     /// Registers a unique view for an ad using a per-viewer marker document
     /// in a "viewers" subcollection. If this viewer hasn't been recorded
     /// yet, creates the marker and atomically increments `views` by 1.
-    func registerUniqueView(adId: String) async {
+    ///
+    /// `viewerId` should be the signed-in user's uid when available, falling
+    /// back to the anonymous per-device `ViewerIdentity.id` for guests —
+    /// otherwise switching accounts on the same device/simulator would be
+    /// treated as the same viewer and never count as a second view.
+    func registerUniqueView(adId: String, viewerId: String = ViewerIdentity.id) async {
         let db = Firestore.firestore()
-        let viewerRef = db.collection("ads").document(adId).collection("viewers").document(ViewerIdentity.id)
+        let viewerRef = db.collection("ads").document(adId).collection("viewers").document(viewerId)
         let adRef = db.collection("ads").document(adId)
 
         do {

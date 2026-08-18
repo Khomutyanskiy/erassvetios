@@ -63,6 +63,14 @@ struct AdminPanelView: View {
                         Divider().overlay(AppTheme.cardBorder)
 
                         NavigationLink {
+                            AdminSupportContactsView()
+                        } label: {
+                            AdminMenuRow(icon: "questionmark.circle", title: "Контакты поддержки")
+                        }
+
+                        Divider().overlay(AppTheme.cardBorder)
+
+                        NavigationLink {
                             AdminStatsView()
                         } label: {
                             AdminMenuRow(icon: "chart.bar", title: "Статистика")

@@ -151,15 +151,6 @@ private struct TabBarButton: View {
                     Image(systemName: icon)
                         .font(.system(size: 18, weight: isSelected ? .semibold : .regular))
                         .foregroundColor(isSelected ? AppTheme.accent : AppTheme.textSecondary)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 6)
-                        .background {
-                            if isSelected {
-                                Capsule()
-                                    .fill(AppTheme.accent.opacity(0.16))
-                                    .matchedGeometryEffect(id: "tabPill", in: namespace)
-                            }
-                        }
 
                     if badgeCount > 0 {
                         Text(badgeCount > 99 ? "99+" : "\(badgeCount)")
@@ -169,7 +160,16 @@ private struct TabBarButton: View {
                             .padding(.vertical, 1)
                             .background(Color.red)
                             .clipShape(Capsule())
-                            .offset(x: 4, y: -2)
+                            .offset(x: 7, y: -6)
+                    }
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 6)
+                .background {
+                    if isSelected {
+                        Capsule()
+                            .fill(AppTheme.accent.opacity(0.16))
+                            .matchedGeometryEffect(id: "tabPill", in: namespace)
                     }
                 }
 

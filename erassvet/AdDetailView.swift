@@ -22,6 +22,8 @@ struct AdDetailView: View {
     @State private var isStartingChat = false
     @State private var selectedImageIndex = 0
     @State private var showFullScreenImages = false
+    /// Set when a contact couldn't be opened directly and was copied instead.
+    @State private var copiedContactValue: String?
 
     private var isFavorite: Bool { favoritesViewModel.isFavorite(ad.id) }
 
@@ -69,7 +71,7 @@ struct AdDetailView: View {
                         }
                     }
 
-                    Label("\(ad.views) просмотров", systemImage: "eye")
+                    Label(ad.viewsText, systemImage: "eye")
                         .font(.caption)
                         .foregroundColor(AppTheme.textSecondary)
                 }
@@ -94,10 +96,16 @@ struct AdDetailView: View {
                     .overlay(RoundedRectangle(cornerRadius: 16).stroke(AppTheme.cardBorder, lineWidth: 1))
                 }
 
-                sellerCard
+                // When the seller specified a contact just for this ad, it
+                // replaces both the seller card and their profile contacts.
+                if let adContact = ad.adContactItem {
+                    adContactCard(adContact)
+                } else {
+                    sellerCard
 
-                if !ad.contacts.items.isEmpty {
-                    contactsCard
+                    if !ad.contacts.items.isEmpty {
+                        contactsCard
+                    }
                 }
 
                 contactButton
@@ -122,8 +130,17 @@ struct AdDetailView: View {
         } message: {
             Text("Нельзя написать самому себе.")
         }
+        .alert("Скопировано", isPresented: Binding(
+            get: { copiedContactValue != nil },
+            set: { if !$0 { copiedContactValue = nil } }
+        )) {
+            Button("Понятно", role: .cancel) { copiedContactValue = nil }
+        } message: {
+            Text("\(copiedContactValue ?? "") — не удалось открыть на этом устройстве, контакт скопирован в буфер обмена.")
+        }
         .task(id: ad.id) {
-            await adsViewModel.registerUniqueView(adId: ad.id)
+            let viewerId = authViewModel.user?.uid ?? ViewerIdentity.id
+            await adsViewModel.registerUniqueView(adId: ad.id, viewerId: viewerId)
         }
     }
 
@@ -161,11 +178,13 @@ struct AdDetailView: View {
             .fullScreenCover(isPresented: $showFullScreenImages) {
                 FullScreenImageViewer(imageURLs: ad.imageURLs, selectedIndex: $selectedImageIndex)
             }
-        } else {
-            imageFallback
         }
+        // Объявления без фото просто не показывают этот блок — вместо
+        // пустого плейсхолдера карточка начинается сразу с названия.
     }
 
+    /// Shown only when a photo *was* uploaded but failed to load (broken
+    /// link, no network) — never for ads that simply have no photos.
     private var imageFallback: some View {
         VStack(spacing: 8) {
             Image(systemName: ad.iconName)
@@ -277,6 +296,45 @@ struct AdDetailView: View {
         .overlay(RoundedRectangle(cornerRadius: 16).stroke(AppTheme.cardBorder, lineWidth: 1))
     }
 
+    /// Shown instead of the seller card + profile contacts when the ad has
+    /// its own contact person: name on top, tappable contact value below.
+    private func adContactCard(_ item: ContactItem) -> some View {
+        Button {
+            openContact(item)
+        } label: {
+            HStack(spacing: 12) {
+                ZStack {
+                    Circle()
+                        .fill(item.tint.opacity(0.18))
+                        .frame(width: 44, height: 44)
+                    Image(systemName: item.icon)
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(item.tint)
+                }
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(item.title)
+                        .font(.subheadline.bold())
+                        .foregroundColor(AppTheme.textPrimary)
+                    Text(item.value)
+                        .font(.footnote)
+                        .foregroundColor(AppTheme.textSecondary)
+                }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.footnote)
+                    .foregroundColor(AppTheme.textSecondary)
+            }
+            .padding(16)
+            .background(AppTheme.card)
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .overlay(RoundedRectangle(cornerRadius: 16).stroke(AppTheme.cardBorder, lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+    }
+
     private var contactsCard: some View {
         VStack(alignment: .leading, spacing: 0) {
             Text("Контакты")
@@ -330,8 +388,23 @@ struct AdDetailView: View {
     }
 
     private func openContact(_ item: ContactItem) {
-        guard let url = URL(string: item.urlString) else { return }
-        UIApplication.shared.open(url)
+        guard let url = URL(string: item.urlString) else {
+            copyToClipboard(item.value)
+            return
+        }
+        // `tel:` isn't supported everywhere (iOS Simulator, iPad without
+        // cellular) — falling back to the clipboard keeps the tap useful
+        // instead of silently doing nothing.
+        UIApplication.shared.open(url, options: [:]) { didOpen in
+            if !didOpen {
+                copyToClipboard(item.value)
+            }
+        }
+    }
+
+    private func copyToClipboard(_ value: String) {
+        UIPasteboard.general.string = value
+        copiedContactValue = value
     }
 
     private var contactButton: some View {

@@ -46,11 +46,8 @@ struct PostAdView: View {
     @State private var selectedContactKeys: Set<String> = []
     @State private var isLoadingProfileContacts = true
     @State private var showEditProfileForContacts = false
+    @State private var adContactName: String = ""
     @State private var adContactValue: String = ""
-
-    /// Label used to recognize the ad-specific contact (stored as a regular
-    /// custom contact in `contacts.other`) when re-loading an ad for editing.
-    private static let adContactLabel = "Для этого объявления"
 
     init(existingAd: Ad? = nil) {
         self.existingAd = existingAd
@@ -131,9 +128,9 @@ struct PostAdView: View {
                 if isEditing {
                     Text("Объявление обновлено.")
                 } else if wasSentForModeration {
-                    Text("Объявление появится на главной странице после проверки администратором.")
+                    Text("Объявление появится в ленте после проверки администратором.")
                 } else {
-                    Text("Оно уже отображается на главной странице.")
+                    Text("Оно уже отображается в ленте.")
                 }
             }
             .alert("Удалить объявление?", isPresented: $showDeleteConfirm) {
@@ -426,9 +423,16 @@ struct PostAdView: View {
                     .font(.footnote)
                     .foregroundColor(AppTheme.textSecondary)
 
-                Text("Например, отдельный номер или ссылка, которые не хочется добавлять в профиль целиком.")
+                Text("Если заполнить, в объявлении будет показан только этот контакт — профиль и остальные контакты скрыты.")
                     .font(.caption)
                     .foregroundColor(AppTheme.textSecondary.opacity(0.8))
+
+                TextField("", text: $adContactName, prompt: Text("Имя контактного лица").foregroundColor(AppTheme.textSecondary))
+                    .foregroundColor(AppTheme.textPrimary)
+                    .padding(14)
+                    .background(AppTheme.card)
+                    .clipShape(RoundedRectangle(cornerRadius: 14))
+                    .overlay(RoundedRectangle(cornerRadius: 14).stroke(AppTheme.cardBorder, lineWidth: 1))
 
                 TextField("", text: $adContactValue, prompt: Text("Телефон, ссылка и т.п.").foregroundColor(AppTheme.textSecondary))
                     .foregroundColor(AppTheme.textPrimary)
@@ -443,6 +447,12 @@ struct PostAdView: View {
     private func loadContacts() async {
         profileContacts = await authViewModel.loadContacts()
         if let existingAd {
+            // The ad-specific contact lives in its own fields on the ad, not
+            // among the toggleable profile contacts (older ads that stored it
+            // as a custom contact are normalized when the Ad is decoded).
+            adContactName = existingAd.adContactName
+            adContactValue = existingAd.adContactValue
+
             var keys: Set<String> = []
             if !existingAd.contacts.email.isEmpty { keys.insert("email") }
             if !existingAd.contacts.phone.isEmpty { keys.insert("phone") }
@@ -450,12 +460,6 @@ struct PostAdView: View {
             if !existingAd.contacts.whatsapp.isEmpty { keys.insert("whatsapp") }
             if !existingAd.contacts.max.isEmpty { keys.insert("max") }
             for adCustom in existingAd.contacts.other {
-                // The ad-specific contact field lives in its own state, not
-                // among the toggleable profile contacts — skip it here.
-                if adCustom.label.trimmingCharacters(in: .whitespaces) == Self.adContactLabel {
-                    adContactValue = adCustom.value
-                    continue
-                }
                 let label = adCustom.label.trimmingCharacters(in: .whitespaces).lowercased()
                 if let match = profileContacts.items.first(where: {
                     $0.id.hasPrefix("custom_") && $0.title.trimmingCharacters(in: .whitespaces).lowercased() == label
@@ -734,11 +738,9 @@ struct PostAdView: View {
         wasSentForModeration = initialStatus == .pending
 
         let price = dealType == .free ? nil : Double(priceText.replacingOccurrences(of: " ", with: ""))
-        var contactsToSave = profileContacts.filtered(keys: selectedContactKeys)
-        let trimmedAdContact = adContactValue.trimmingCharacters(in: .whitespaces)
-        if !trimmedAdContact.isEmpty {
-            contactsToSave.other.append(CustomContact(label: Self.adContactLabel, value: trimmedAdContact))
-        }
+        let contactsToSave = profileContacts.filtered(keys: selectedContactKeys)
+        let trimmedAdContactName = adContactName.trimmingCharacters(in: .whitespaces)
+        let trimmedAdContactValue = adContactValue.trimmingCharacters(in: .whitespaces)
         let success: Bool
         if let existingAd {
             success = await adsViewModel.updateAd(
@@ -755,6 +757,8 @@ struct PostAdView: View {
                 longitude: coordinate?.lon,
                 dealType: dealType,
                 contacts: contactsToSave,
+                adContactName: trimmedAdContactName,
+                adContactValue: trimmedAdContactValue,
                 sellerId: existingAd.sellerId,
                 keptImageURLs: existingImageURLs,
                 newImages: newImages
@@ -776,6 +780,8 @@ struct PostAdView: View {
                 sellerPhotoURL: user.photoURL?.absoluteString,
                 dealType: dealType,
                 contacts: contactsToSave,
+                adContactName: trimmedAdContactName,
+                adContactValue: trimmedAdContactValue,
                 newImages: newImages,
                 initialStatus: initialStatus
             )

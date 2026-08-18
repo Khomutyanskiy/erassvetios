@@ -72,6 +72,55 @@ struct Ad: Identifiable, Hashable {
     /// of their profile contacts at the time they were selected).
     let contacts: UserContacts
 
+    /// An optional contact person specific to this ad (e.g. a colleague or
+    /// a separate number the seller doesn't want on their whole profile).
+    /// When `adContactValue` is filled in, the detail screen shows only this
+    /// contact and hides both the seller card and the profile contacts.
+    let adContactName: String
+    let adContactValue: String
+
+    /// Legacy storage key — before `adContactName`/`adContactValue` existed,
+    /// the per-ad contact was kept as a custom contact under this label.
+    /// Still read (and lifted out of `contacts`) so older ads render right.
+    static let legacyAdContactLabel = "Для этого объявления"
+
+    var hasAdContact: Bool {
+        !adContactValue.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
+    /// Displayable form of the ad-specific contact, reusing the same tappable
+    /// row model as the profile contacts.
+    var adContactItem: ContactItem? {
+        let trimmedValue = adContactValue.trimmingCharacters(in: .whitespaces)
+        guard !trimmedValue.isEmpty else { return nil }
+        let trimmedName = adContactName.trimmingCharacters(in: .whitespaces)
+        return ContactItem(
+            id: "ad_contact",
+            icon: "person.crop.circle.fill",
+            tint: AppTheme.accent,
+            title: trimmedName.isEmpty ? "Контакт по объявлению" : trimmedName,
+            value: trimmedValue,
+            urlString: Ad.contactURLString(for: trimmedValue)
+        )
+    }
+
+    /// Best-effort tappable link for a free-form contact: a phone number
+    /// becomes a `tel:` link, an email a `mailto:` link, anything already
+    /// URL-shaped is used as-is.
+    private static func contactURLString(for value: String) -> String {
+        if value.contains("@"), !value.contains(" "), !value.lowercased().hasPrefix("http") {
+            return "mailto:\(value)"
+        }
+        if value.lowercased().hasPrefix("http") || value.lowercased().hasPrefix("tg:") {
+            return value
+        }
+        let digits = value.filter { $0.isNumber || $0 == "+" }
+        if digits.filter(\.isNumber).count >= 6 {
+            return "tel:\(digits)"
+        }
+        return value
+    }
+
     var priceText: String {
         if dealType == .free { return "Даром" }
         guard let price else { return "Договорная" }
@@ -112,6 +161,24 @@ struct Ad: Identifiable, Hashable {
             parts.append("кв. \(apartment)")
         }
         return parts.joined(separator: ", ")
+    }
+
+    /// "1 просмотр" / "3 просмотра" / "5 просмотров" — correct Russian
+    /// plural form for `views`, shared by AdDetailView and "Мои объявления".
+    var viewsText: String {
+        let rem100 = views % 100
+        let rem10 = views % 10
+        let word: String
+        if rem100 >= 11 && rem100 <= 14 {
+            word = "просмотров"
+        } else {
+            switch rem10 {
+            case 1: word = "просмотр"
+            case 2, 3, 4: word = "просмотра"
+            default: word = "просмотров"
+            }
+        }
+        return "\(views) \(word)"
     }
 
     var iconName: String {
@@ -166,7 +233,25 @@ struct Ad: Identifiable, Hashable {
         self.latitude = data["latitude"] as? Double
         self.longitude = data["longitude"] as? Double
 
-        self.contacts = UserContacts.from(data["contacts"] as? [String: Any], fallbackEmail: "")
+        var parsedContacts = UserContacts.from(data["contacts"] as? [String: Any], fallbackEmail: "")
+        var contactName = data["adContactName"] as? String ?? ""
+        var contactValue = data["adContactValue"] as? String ?? ""
+
+        // Backward compatibility: ads created before these fields existed
+        // stored the per-ad contact as a custom contact with a sentinel
+        // label. Lift it out so it isn't rendered twice.
+        if contactValue.isEmpty,
+           let legacyIndex = parsedContacts.other.firstIndex(where: { $0.label == Ad.legacyAdContactLabel }) {
+            contactValue = parsedContacts.other[legacyIndex].value
+            parsedContacts.other.remove(at: legacyIndex)
+            if contactName.isEmpty {
+                contactName = data["sellerName"] as? String ?? ""
+            }
+        }
+
+        self.contacts = parsedContacts
+        self.adContactName = contactName
+        self.adContactValue = contactValue
     }
 
     /// Fields for creating a new ad document. `imageURLs` holds up to 5
@@ -187,6 +272,8 @@ struct Ad: Identifiable, Hashable {
         sellerPhotoURL: String?,
         dealType: AdDealType,
         contacts: UserContacts,
+        adContactName: String,
+        adContactValue: String,
         imageURLs: [String],
         initialStatus: AdStatus = .active
     ) -> [String: Any] {
@@ -209,6 +296,8 @@ struct Ad: Identifiable, Hashable {
             "dealType": dealType.rawValue,
             "views": 0,
             "contacts": contacts.toDictionary(),
+            "adContactName": adContactName,
+            "adContactValue": adContactValue,
             "createdAt": FieldValue.serverTimestamp()
         ]
     }
@@ -228,6 +317,8 @@ struct Ad: Identifiable, Hashable {
         longitude: Double?,
         dealType: AdDealType,
         contacts: UserContacts,
+        adContactName: String,
+        adContactValue: String,
         imageURLs: [String]
     ) -> [String: Any] {
         [
@@ -243,6 +334,8 @@ struct Ad: Identifiable, Hashable {
             "longitude": longitude as Any,
             "dealType": dealType.rawValue,
             "contacts": contacts.toDictionary(),
+            "adContactName": adContactName,
+            "adContactValue": adContactValue,
             "imageURLs": imageURLs
         ]
     }
