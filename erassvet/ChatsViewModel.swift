@@ -6,6 +6,9 @@
 import Foundation
 import FirebaseFirestore
 import Combine
+#if canImport(UIKit)
+import UIKit
+#endif
 
 @MainActor
 final class ChatsViewModel: ObservableObject {
@@ -112,20 +115,53 @@ final class ChatsViewModel: ObservableObject {
         }
     }
 
-    /// Sends a message and bumps the recipient's unread counter.
+    /// Sends a text message and bumps the recipient's unread counter.
     func sendMessage(chatId: String, senderId: String, otherUid: String, text: String) async -> Bool {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return false }
+        return await writeMessage(chatId: chatId, senderId: senderId, otherUid: otherUid, text: trimmed, imageURL: nil, previewText: trimmed)
+    }
+
+    /// Uploads `image` to Storage and sends it as a photo message. The chat
+    /// list preview shows "📷 Фото" (same convention as WhatsApp/Telegram)
+    /// since there's no text to show.
+    @discardableResult
+    func sendImageMessage(chatId: String, senderId: String, otherUid: String, image: UIImage) async -> Bool {
+        let db = Firestore.firestore()
+        let messageRef = db.collection("chats").document(chatId).collection("messages").document()
+        do {
+            let imageURL = try await StorageService.uploadImage(image, path: "chats/\(chatId)/\(messageRef.documentID).jpg")
+            return await writeMessage(chatId: chatId, senderId: senderId, otherUid: otherUid, text: "", imageURL: imageURL, previewText: "📷 Фото", messageRef: messageRef)
+        } catch {
+            errorMessage = error.localizedDescription
+            return false
+        }
+    }
+
+    private func writeMessage(
+        chatId: String,
+        senderId: String,
+        otherUid: String,
+        text: String,
+        imageURL: String?,
+        previewText: String,
+        messageRef: DocumentReference? = nil
+    ) async -> Bool {
         let db = Firestore.firestore()
         let chatRef = db.collection("chats").document(chatId)
+        let ref = messageRef ?? chatRef.collection("messages").document()
         do {
-            try await chatRef.collection("messages").addDocument(data: [
+            var data: [String: Any] = [
                 "senderId": senderId,
-                "text": trimmed,
+                "text": text,
                 "createdAt": FieldValue.serverTimestamp()
-            ])
+            ]
+            if let imageURL {
+                data["imageURL"] = imageURL
+            }
+            try await ref.setData(data)
             try await chatRef.updateData([
-                "lastMessage": trimmed,
+                "lastMessage": previewText,
                 "lastSenderId": senderId,
                 "lastMessageAt": FieldValue.serverTimestamp(),
                 "unread.\(otherUid)": FieldValue.increment(Int64(1))

@@ -7,7 +7,7 @@ import SwiftUI
 import FirebaseAuth
 
 enum AppTab {
-    case feed, chats, favorites, profile
+    case feed, chats, blog, profile
 }
 
 /// Lets a deeply-pushed screen (e.g. an open chat) hide MainTabView's custom
@@ -41,8 +41,8 @@ struct MainTabView: View {
                     FeedView()
                 case .chats:
                     ChatsView()
-                case .favorites:
-                    FavoritesView()
+                case .blog:
+                    BlogView()
                 case .profile:
                     ProfileView()
                 }
@@ -113,7 +113,7 @@ private struct BottomTabBar: View {
             .offset(y: -12)
             .padding(.horizontal, 2)
 
-            TabBarButton(icon: "heart", title: "Избранное", tab: .favorites, selectedTab: $selectedTab, namespace: tabAnimation)
+            TabBarButton(icon: "text.bubble", title: "Блог", tab: .blog, selectedTab: $selectedTab, namespace: tabAnimation)
             TabBarButton(icon: "person", title: "Профиль", tab: .profile, selectedTab: $selectedTab, namespace: tabAnimation)
         }
         .padding(.horizontal, 8)

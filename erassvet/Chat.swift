@@ -99,21 +99,28 @@ struct Chat: Identifiable, Hashable {
     }
 }
 
-/// A single message within a chat's "messages" subcollection.
+/// A single message within a chat's "messages" subcollection. A message is
+/// either text, an image, or both — `imageURL` is set for photo messages
+/// (sent via the paperclip button in `ChatDetailView`).
 struct ChatMessage: Identifiable, Hashable {
     let id: String
     let senderId: String
     let text: String
+    let imageURL: String?
     let createdAt: Date?
 
+    var hasImage: Bool { imageURL?.isEmpty == false }
+
     init?(id: String, data: [String: Any]) {
-        guard
-            let senderId = data["senderId"] as? String,
-            let text = data["text"] as? String
-        else { return nil }
+        guard let senderId = data["senderId"] as? String else { return nil }
+        let text = data["text"] as? String ?? ""
+        let imageURL = data["imageURL"] as? String
+        guard !text.isEmpty || imageURL?.isEmpty == false else { return nil }
+
         self.id = id
         self.senderId = senderId
         self.text = text
+        self.imageURL = imageURL
         if let timestamp = data["createdAt"] as? Timestamp {
             self.createdAt = timestamp.dateValue()
         } else {

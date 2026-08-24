@@ -36,6 +36,7 @@ struct FeedView: View {
     @State private var showAuth = false
     @State private var showAllCategories = false
     @State private var showSearch = false
+    @State private var showFavorites = false
 
     private var displayCategories: [AppCategory] {
         [.allFilter] + categoriesViewModel.categories
@@ -83,19 +84,29 @@ struct FeedView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
-                    PageHeader(title: "Лента", trailingIcon: "magnifyingglass") {
-                        withAnimation {
-                            showSearch.toggle()
-                            if !showSearch {
-                                searchText = ""
-                                minPriceText = ""
-                                maxPriceText = ""
+                    PageHeader(
+                        title: "Лента",
+                        trailingIcon: "magnifyingglass",
+                        trailingAction: {
+                            withAnimation {
+                                showSearch.toggle()
+                                if !showSearch {
+                                    searchText = ""
+                                    minPriceText = ""
+                                    maxPriceText = ""
+                                }
                             }
-                        }
-                    }
+                        },
+                        secondaryTrailingIcon: "heart",
+                        secondaryTrailingAction: { showFavorites = true }
+                    )
                     .padding(.top, 8)
 
+                    // Search field, price range and the category/deal-type
+                    // filters are one unit — the magnifier in the header
+                    // reveals and hides all of them together.
                     if showSearch {
+                        VStack(alignment: .leading, spacing: 20) {
                         VStack(spacing: 10) {
                             HStack(spacing: 10) {
                                 Image(systemName: "magnifyingglass")
@@ -126,76 +137,77 @@ struct FeedView: View {
                                     .overlay(RoundedRectangle(cornerRadius: 14).stroke(AppTheme.cardBorder, lineWidth: 1))
                             }
                         }
-                        .transition(.move(edge: .top).combined(with: .opacity))
-                    }
 
-                    HStack(spacing: 10) {
-                        Button {
-                            showAllCategories = true
-                        } label: {
-                            Image(systemName: "line.3.horizontal.decrease")
-                                .font(.system(size: 13, weight: .semibold))
-                                .foregroundColor(AppTheme.textPrimary)
-                                .frame(width: 32, height: 32)
-                                .background(AppTheme.card)
-                                .clipShape(Circle())
-                                .overlay(Circle().stroke(AppTheme.cardBorder, lineWidth: 1))
-                        }
-
-                        Menu {
-                            ForEach(FeedSortOption.allCases) { option in
-                                Button {
-                                    sortOption = option
-                                } label: {
-                                    Label(option.rawValue, systemImage: option.icon)
-                                }
+                        HStack(spacing: 10) {
+                            Button {
+                                showAllCategories = true
+                            } label: {
+                                Image(systemName: "line.3.horizontal.decrease")
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .foregroundColor(AppTheme.textPrimary)
+                                    .frame(width: 32, height: 32)
+                                    .background(AppTheme.card)
+                                    .clipShape(Circle())
+                                    .overlay(Circle().stroke(AppTheme.cardBorder, lineWidth: 1))
                             }
-                        } label: {
-                            Image(systemName: "arrow.up.arrow.down")
-                                .font(.system(size: 13, weight: .semibold))
-                                .foregroundColor(AppTheme.textPrimary)
-                                .frame(width: 32, height: 32)
-                                .background(AppTheme.card)
-                                .clipShape(Circle())
-                                .overlay(Circle().stroke(AppTheme.cardBorder, lineWidth: 1))
-                        }
 
-                        ScrollViewReader { proxy in
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                HStack(spacing: 10) {
-                                    ForEach(displayCategories) { category in
-                                        CategoryChip(
-                                            title: category.title,
-                                            isSelected: selectedCategory == category.title
-                                        )
-                                        .id(category.title)
-                                        .onTapGesture {
-                                            selectedCategory = category.title
+                            Menu {
+                                ForEach(FeedSortOption.allCases) { option in
+                                    Button {
+                                        sortOption = option
+                                    } label: {
+                                        Label(option.rawValue, systemImage: option.icon)
+                                    }
+                                }
+                            } label: {
+                                Image(systemName: "arrow.up.arrow.down")
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .foregroundColor(AppTheme.textPrimary)
+                                    .frame(width: 32, height: 32)
+                                    .background(AppTheme.card)
+                                    .clipShape(Circle())
+                                    .overlay(Circle().stroke(AppTheme.cardBorder, lineWidth: 1))
+                            }
+
+                            ScrollViewReader { proxy in
+                                ScrollView(.horizontal, showsIndicators: false) {
+                                    HStack(spacing: 10) {
+                                        ForEach(displayCategories) { category in
+                                            CategoryChip(
+                                                title: category.title,
+                                                isSelected: selectedCategory == category.title
+                                            )
+                                            .id(category.title)
+                                            .onTapGesture {
+                                                selectedCategory = category.title
+                                            }
                                         }
                                     }
                                 }
-                            }
-                            .onChange(of: selectedCategory) { newValue in
-                                withAnimation {
-                                    proxy.scrollTo(newValue, anchor: .center)
+                                .onChange(of: selectedCategory) { newValue in
+                                    withAnimation {
+                                        proxy.scrollTo(newValue, anchor: .center)
+                                    }
                                 }
                             }
                         }
-                    }
 
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 10) {
-                            ForEach(["Все"] + AdDealType.allCases.map(\.title), id: \.self) { title in
-                                CategoryChip(
-                                    title: title,
-                                    isSelected: selectedDealType == title,
-                                    tint: AdDealType(rawValue: title).flatMap { AppTheme.dealTypeColors[$0] } ?? AppTheme.accent
-                                )
-                                .onTapGesture {
-                                    selectedDealType = title
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 10) {
+                                ForEach(["Все"] + AdDealType.allCases.map(\.title), id: \.self) { title in
+                                    CategoryChip(
+                                        title: title,
+                                        isSelected: selectedDealType == title,
+                                        tint: AdDealType(rawValue: title).flatMap { AppTheme.dealTypeColors[$0] } ?? AppTheme.accent
+                                    )
+                                    .onTapGesture {
+                                        selectedDealType = title
+                                    }
                                 }
                             }
                         }
+                        }
+                        .transition(.move(edge: .top).combined(with: .opacity))
                     }
 
                     if adsListViewModel.isLoading {
@@ -282,6 +294,10 @@ struct FeedView: View {
             }
             .sheet(isPresented: $showAllCategories) {
                 CategoryPickerSheet(categories: displayCategories, selectedCategory: $selectedCategory)
+            }
+            .sheet(isPresented: $showFavorites) {
+                FavoritesView()
+                    .environmentObject(authViewModel)
             }
             .onAppear {
                 adsListViewModel.startListening()

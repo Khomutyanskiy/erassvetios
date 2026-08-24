@@ -15,6 +15,11 @@ struct PageHeader: View {
     /// Existing call sites are unaffected since this defaults to nil.
     var trailingIcon: String? = nil
     var trailingAction: (() -> Void)? = nil
+    /// A second trailing icon, rendered just before `trailingIcon` (e.g.
+    /// Feed's favorites shortcut sitting next to the search icon). Defaults
+    /// to nil so existing single-icon call sites are unaffected.
+    var secondaryTrailingIcon: String? = nil
+    var secondaryTrailingAction: (() -> Void)? = nil
 
     var body: some View {
         ZStack {
@@ -23,16 +28,30 @@ struct PageHeader: View {
                 .foregroundColor(AppTheme.textPrimary)
                 .frame(maxWidth: .infinity, alignment: .center)
 
-            if let trailingIcon {
-                HStack {
+            if trailingIcon != nil || secondaryTrailingIcon != nil {
+                HStack(spacing: 4) {
                     Spacer()
-                    Button {
-                        trailingAction?()
-                    } label: {
-                        Image(systemName: trailingIcon)
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundColor(AppTheme.textPrimary)
-                            .frame(width: 32, height: 32)
+
+                    if let secondaryTrailingIcon {
+                        Button {
+                            secondaryTrailingAction?()
+                        } label: {
+                            Image(systemName: secondaryTrailingIcon)
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundColor(AppTheme.textPrimary)
+                                .frame(width: 32, height: 32)
+                        }
+                    }
+
+                    if let trailingIcon {
+                        Button {
+                            trailingAction?()
+                        } label: {
+                            Image(systemName: trailingIcon)
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundColor(AppTheme.textPrimary)
+                                .frame(width: 32, height: 32)
+                        }
                     }
                 }
             }

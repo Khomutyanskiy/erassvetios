@@ -8,14 +8,19 @@ import SwiftUI
 struct FavoritesView: View {
     @EnvironmentObject private var authViewModel: AuthViewModel
     @EnvironmentObject private var favoritesViewModel: FavoritesViewModel
+    @Environment(\.dismiss) private var dismiss
     @State private var showAuth = false
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                PageHeader(title: "Избранное")
-                    .padding(.horizontal, 16)
-                    .padding(.top, 8)
+                PageHeader(
+                    title: "Избранное",
+                    trailingIcon: "xmark",
+                    trailingAction: { dismiss() }
+                )
+                .padding(.horizontal, 16)
+                .padding(.top, 8)
 
                 content
             }

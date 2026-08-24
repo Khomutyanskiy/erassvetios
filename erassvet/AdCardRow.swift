@@ -5,6 +5,7 @@
 
 import SwiftUI
 import FirebaseAuth
+import FirebaseFirestore
 
 /// Reusable ad summary card used in the Лента and Избранное lists.
 /// Tapping the card navigates to the ad's detail screen (requires an
@@ -17,6 +18,10 @@ struct AdCardRow: View {
     @EnvironmentObject private var favoritesViewModel: FavoritesViewModel
     @EnvironmentObject private var authViewModel: AuthViewModel
     @State private var showAuth = false
+    /// One-shot (non-listening) read of the seller's rating, just for this
+    /// card — a full `SellerRatingViewModel` listener per row would be too
+    /// heavy for a scrolling list.
+    @State private var sellerRating: Int = 0
 
     private var isFavorite: Bool { favoritesViewModel.isFavorite(ad.id) }
 
@@ -54,6 +59,17 @@ struct AdCardRow: View {
                             Text(ad.priceText)
                                 .font(.subheadline.bold())
                                 .foregroundColor(AppTheme.gold)
+
+                            if sellerRating != 0 {
+                                HStack(spacing: 2) {
+                                    Image(systemName: sellerRating < 0 ? "hand.thumbsdown.fill" : "hand.thumbsup.fill")
+                                        .font(.system(size: 10))
+                                    Text("\(sellerRating)")
+                                        .font(.caption2.bold())
+                                }
+                                .foregroundColor(sellerRating < 0 ? .red : AppTheme.accent)
+                            }
+
                             Spacer()
                             Text(ad.timeAgoText)
                                 .font(.caption)
@@ -84,6 +100,13 @@ struct AdCardRow: View {
         .overlay(RoundedRectangle(cornerRadius: 16).stroke(AppTheme.cardBorder, lineWidth: 1))
         .sheet(isPresented: $showAuth) {
             AuthView().environmentObject(authViewModel)
+        }
+        .task(id: ad.sellerId) {
+            let doc = try? await Firestore.firestore()
+                .collection("user_public")
+                .document(ad.sellerId)
+                .getDocument()
+            sellerRating = doc?.data()?["rating"] as? Int ?? 0
         }
     }
 

@@ -5,6 +5,7 @@
 
 import SwiftUI
 import FirebaseAuth
+import PhotosUI
 
 /// A single chat thread — live message list plus an input bar. Marks the
 /// thread as read for the current user on appear.
@@ -29,6 +30,9 @@ struct ChatDetailView: View {
     @State private var showReportSentAlert = false
     @State private var showBlockConfirm = false
     @State private var showUnblockConfirm = false
+    @State private var pickerItem: PhotosPickerItem?
+    @State private var isSendingImage = false
+    @State private var fullScreenImageURL: String?
 
     private var currentUid: String { authViewModel.user?.uid ?? "" }
     private var otherName: String { chat.otherParticipantName(currentUid: currentUid) }
@@ -48,8 +52,12 @@ struct ChatDetailView: View {
                         }
 
                         ForEach(messagesViewModel.messages) { message in
-                            MessageBubble(message: message, isMine: message.senderId == currentUid)
-                                .id(message.id)
+                            MessageBubble(
+                                message: message,
+                                isMine: message.senderId == currentUid,
+                                onTapImage: { url in fullScreenImageURL = url }
+                            )
+                            .id(message.id)
                         }
                     }
                     .padding(16)
@@ -147,6 +155,18 @@ struct ChatDetailView: View {
                 Task { await chatsViewModel.setBlocked(chatId: chat.id, uid: currentUid, blocked: false) }
             }
         }
+        .fullScreenCover(isPresented: Binding(
+            get: { fullScreenImageURL != nil },
+            set: { if !$0 { fullScreenImageURL = nil } }
+        )) {
+            if let url = fullScreenImageURL {
+                FullScreenImageViewer(imageURLs: [url], selectedIndex: .constant(0))
+            }
+        }
+        .onChange(of: pickerItem) { newItem in
+            guard let newItem else { return }
+            Task { await sendPickedImage(newItem) }
+        }
         .onAppear {
             messagesViewModel.startListening(chatId: chat.id)
             Task { await chatsViewModel.markRead(chatId: chat.id, uid: currentUid) }
@@ -211,6 +231,19 @@ struct ChatDetailView: View {
 
     private var inputBar: some View {
         HStack(spacing: 10) {
+            PhotosPicker(selection: $pickerItem, matching: .images) {
+                if isSendingImage {
+                    ProgressView().tint(AppTheme.textSecondary)
+                        .frame(width: 36, height: 36)
+                } else {
+                    Image(systemName: "paperclip")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(AppTheme.textSecondary)
+                        .frame(width: 36, height: 36)
+                }
+            }
+            .disabled(liveChat.isBlocked || isSendingImage)
+
             TextField(
                 "",
                 text: $draft,
@@ -259,27 +292,56 @@ struct ChatDetailView: View {
         )
         isSending = false
     }
+
+    private func sendPickedImage(_ item: PhotosPickerItem) async {
+        guard !liveChat.isBlocked else { return }
+        pickerItem = nil
+        guard let data = try? await item.loadTransferable(type: Data.self), let image = UIImage(data: data) else { return }
+        isSendingImage = true
+        _ = await chatsViewModel.sendImageMessage(
+            chatId: chat.id,
+            senderId: currentUid,
+            otherUid: chat.otherParticipantId(currentUid: currentUid),
+            image: image
+        )
+        isSendingImage = false
+    }
 }
 
 private struct MessageBubble: View {
     let message: ChatMessage
     let isMine: Bool
+    let onTapImage: (String) -> Void
 
     var body: some View {
         HStack {
             if isMine { Spacer(minLength: 40) }
 
-            Text(message.text)
-                .font(.subheadline)
-                .foregroundColor(isMine ? .white : AppTheme.textPrimary)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
-                .background(isMine ? AppTheme.accent : AppTheme.card)
-                .clipShape(RoundedRectangle(cornerRadius: 16))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16)
-                        .stroke(isMine ? Color.clear : AppTheme.cardBorder, lineWidth: 1)
-                )
+            VStack(alignment: isMine ? .trailing : .leading, spacing: message.hasImage && !message.text.isEmpty ? 6 : 0) {
+                if message.hasImage, let imageURL = message.imageURL {
+                    Button {
+                        onTapImage(imageURL)
+                    } label: {
+                        CachedAsyncImage(urlString: imageURL)
+                            .frame(width: 180, height: 180)
+                            .clipShape(RoundedRectangle(cornerRadius: 14))
+                    }
+                    .buttonStyle(.plain)
+                }
+                if !message.text.isEmpty {
+                    Text(message.text)
+                        .font(.subheadline)
+                        .foregroundColor(isMine ? .white : AppTheme.textPrimary)
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .background(isMine ? AppTheme.accent : AppTheme.card)
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(isMine ? Color.clear : AppTheme.cardBorder, lineWidth: 1)
+            )
 
             if !isMine { Spacer(minLength: 40) }
         }

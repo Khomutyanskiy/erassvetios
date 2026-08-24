@@ -71,6 +71,22 @@ struct AdminPanelView: View {
                         Divider().overlay(AppTheme.cardBorder)
 
                         NavigationLink {
+                            AdminAdInterstitialView()
+                        } label: {
+                            AdminMenuRow(icon: "megaphone", title: "Рекламная шторка")
+                        }
+
+                        Divider().overlay(AppTheme.cardBorder)
+
+                        NavigationLink {
+                            AdminBlogModerationView()
+                        } label: {
+                            AdminMenuRow(icon: "text.bubble", title: "Модерация блога")
+                        }
+
+                        Divider().overlay(AppTheme.cardBorder)
+
+                        NavigationLink {
                             AdminStatsView()
                         } label: {
                             AdminMenuRow(icon: "chart.bar", title: "Статистика")

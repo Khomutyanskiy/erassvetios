@@ -249,6 +249,7 @@ private struct ProfileHeader: View {
     @EnvironmentObject private var authViewModel: AuthViewModel
     let user: User
     @State private var showEditProfile = false
+    @StateObject private var ratingViewModel = SellerRatingViewModel()
 
     var body: some View {
         Button {
@@ -303,6 +304,16 @@ private struct ProfileHeader: View {
                             .font(.subheadline)
                             .foregroundColor(AppTheme.textSecondary)
                     }
+
+                    if ratingViewModel.rating != 0 {
+                        HStack(spacing: 4) {
+                            Image(systemName: ratingViewModel.rating < 0 ? "hand.thumbsdown.fill" : "hand.thumbsup.fill")
+                                .font(.caption2)
+                            Text("\(ratingViewModel.rating) \(ratingWord(abs(ratingViewModel.rating))) от покупателей")
+                                .font(.caption)
+                        }
+                        .foregroundColor(ratingViewModel.rating < 0 ? .red : AppTheme.accent)
+                    }
                 }
 
                 Spacer()
@@ -312,6 +323,19 @@ private struct ProfileHeader: View {
         .padding(.top, 4)
         .sheet(isPresented: $showEditProfile) {
             EditProfileView().environmentObject(authViewModel)
+        }
+        .onAppear { ratingViewModel.startListening(sellerId: user.uid, currentUid: nil) }
+        .onDisappear { ratingViewModel.stopListening() }
+    }
+
+    private func ratingWord(_ count: Int) -> String {
+        let rem100 = count % 100
+        let rem10 = count % 10
+        if rem100 >= 11 && rem100 <= 14 { return "оценок" }
+        switch rem10 {
+        case 1: return "оценка"
+        case 2, 3, 4: return "оценки"
+        default: return "оценок"
         }
     }
 }

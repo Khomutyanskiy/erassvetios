@@ -16,6 +16,7 @@ struct AdDetailView: View {
     @EnvironmentObject private var favoritesViewModel: FavoritesViewModel
     @EnvironmentObject private var chatsViewModel: ChatsViewModel
     @StateObject private var adsViewModel = AdsViewModel()
+    @StateObject private var ratingViewModel = SellerRatingViewModel()
     @State private var showAuth = false
     @State private var showOwnAdAlert = false
     @State private var activeChat: Chat?
@@ -71,9 +72,17 @@ struct AdDetailView: View {
                         }
                     }
 
-                    Label(ad.viewsText, systemImage: "eye")
-                        .font(.caption)
-                        .foregroundColor(AppTheme.textSecondary)
+                    HStack(spacing: 12) {
+                        Label(ad.viewsText, systemImage: "eye")
+                            .font(.caption)
+                            .foregroundColor(AppTheme.textSecondary)
+
+                        if !isOwnAd {
+                            ratingButton
+                        } else if ratingViewModel.rating > 0 {
+                            ratingBadge
+                        }
+                    }
                 }
 
                 if !ad.addressText.isEmpty || ad.hasCoordinates {
@@ -141,6 +150,12 @@ struct AdDetailView: View {
         .task(id: ad.id) {
             let viewerId = authViewModel.user?.uid ?? ViewerIdentity.id
             await adsViewModel.registerUniqueView(adId: ad.id, viewerId: viewerId)
+        }
+        .task(id: ad.sellerId) {
+            ratingViewModel.startListening(sellerId: ad.sellerId, currentUid: authViewModel.user?.uid)
+        }
+        .onDisappear {
+            ratingViewModel.stopListening()
         }
     }
 
@@ -294,6 +309,73 @@ struct AdDetailView: View {
         .background(AppTheme.card)
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .overlay(RoundedRectangle(cornerRadius: 16).stroke(AppTheme.cardBorder, lineWidth: 1))
+    }
+
+    private var isOwnAd: Bool { authViewModel.user?.uid == ad.sellerId }
+
+    /// Thumbs up / thumbs down pair plus the running total. Once this viewer
+    /// has voted either way, both buttons lock into a read-only state
+    /// showing which one they picked (no switching, no double-voting).
+    private var ratingButton: some View {
+        HStack(spacing: 6) {
+            Button {
+                Task { await rateSeller(value: 1) }
+            } label: {
+                Image(systemName: ratingViewModel.myVote == 1 ? "hand.thumbsup.fill" : "hand.thumbsup")
+            }
+            .foregroundColor(ratingViewModel.myVote == 1 ? .white : AppTheme.accent)
+            .frame(width: 26, height: 26)
+            .background(ratingViewModel.myVote == 1 ? AppTheme.accent : AppTheme.accent.opacity(0.14))
+            .clipShape(Circle())
+
+            Text("\(ratingViewModel.rating)")
+                .font(.footnote.bold())
+                .foregroundColor(ratingViewModel.rating < 0 ? .red : AppTheme.textPrimary)
+                .frame(minWidth: 18)
+
+            Button {
+                Task { await rateSeller(value: -1) }
+            } label: {
+                Image(systemName: ratingViewModel.myVote == -1 ? "hand.thumbsdown.fill" : "hand.thumbsdown")
+            }
+            .foregroundColor(ratingViewModel.myVote == -1 ? .white : .red)
+            .frame(width: 26, height: 26)
+            .background(ratingViewModel.myVote == -1 ? Color.red : Color.red.opacity(0.14))
+            .clipShape(Circle())
+
+            if ratingViewModel.isSubmitting {
+                ProgressView().tint(AppTheme.accent).scaleEffect(0.7)
+            }
+        }
+        .font(.footnote)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(AppTheme.accent.opacity(0.08))
+        .clipShape(Capsule())
+        .disabled(ratingViewModel.hasVoted || ratingViewModel.isSubmitting)
+    }
+
+    /// Read-only version shown to the seller viewing their own ad.
+    private var ratingBadge: some View {
+        HStack(spacing: 5) {
+            Image(systemName: ratingViewModel.rating < 0 ? "hand.thumbsdown.fill" : "hand.thumbsup.fill")
+            Text("\(ratingViewModel.rating)")
+                .font(.footnote.bold())
+        }
+        .font(.footnote)
+        .foregroundColor(ratingViewModel.rating < 0 ? .red : AppTheme.accent)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background((ratingViewModel.rating < 0 ? Color.red : AppTheme.accent).opacity(0.14))
+        .clipShape(Capsule())
+    }
+
+    private func rateSeller(value: Int) async {
+        guard let uid = authViewModel.user?.uid else {
+            showAuth = true
+            return
+        }
+        await ratingViewModel.rate(sellerId: ad.sellerId, currentUid: uid, value: value)
     }
 
     /// Shown instead of the seller card + profile contacts when the ad has
