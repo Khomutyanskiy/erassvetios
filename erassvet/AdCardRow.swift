@@ -82,6 +82,13 @@ struct AdCardRow: View {
             }
             .buttonStyle(.plain)
 
+            if ad.sellerId != authViewModel.user?.uid {
+                SubscribeButton(authorId: ad.sellerId, onRequireAuth: { showAuth = true })
+                    .padding(8)
+                    .background(AppTheme.background.opacity(0.6))
+                    .clipShape(Circle())
+            }
+
             Button {
                 toggleFavorite()
             } label: {
