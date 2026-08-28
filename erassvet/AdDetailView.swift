@@ -25,6 +25,13 @@ struct AdDetailView: View {
     @State private var showFullScreenImages = false
     /// Set when a contact couldn't be opened directly and was copied instead.
     @State private var copiedContactValue: String?
+    @State private var showReportDialog = false
+    @State private var showReportSentAlert = false
+    @State private var showBlockConfirm = false
+    @State private var showUnblockConfirm = false
+
+    private let reportReasons = ["Спам или реклама", "Мошенничество", "Оскорбления", "Недопустимый контент", "Другое"]
+    private var isBlocked: Bool { authViewModel.isBlocked(ad.sellerId) }
 
     private var isFavorite: Bool { favoritesViewModel.isFavorite(ad.id) }
 
@@ -304,11 +311,83 @@ struct AdDetailView: View {
             }
 
             Spacer()
+
+            if !isOwnAd {
+                reportMenu
+            }
         }
         .padding(16)
         .background(AppTheme.card)
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .overlay(RoundedRectangle(cornerRadius: 16).stroke(AppTheme.cardBorder, lineWidth: 1))
+    }
+
+    /// "..." menu with report/block actions — hidden on your own ad. Reports
+    /// go into the shared admin queue (`ReportService`); blocking hides this
+    /// seller's ads from your feed immediately (`AuthViewModel.blockUser`).
+    private var reportMenu: some View {
+        Menu {
+            Button {
+                if authViewModel.user == nil { showAuth = true } else { showReportDialog = true }
+            } label: {
+                Label("Пожаловаться на объявление", systemImage: "exclamationmark.bubble")
+            }
+
+            if isBlocked {
+                Button {
+                    showUnblockConfirm = true
+                } label: {
+                    Label("Разблокировать продавца", systemImage: "checkmark.circle")
+                }
+            } else {
+                Button(role: .destructive) {
+                    if authViewModel.user == nil { showAuth = true } else { showBlockConfirm = true }
+                } label: {
+                    Label("Заблокировать продавца", systemImage: "hand.raised")
+                }
+            }
+        } label: {
+            Image(systemName: "ellipsis.circle")
+                .foregroundColor(AppTheme.textSecondary)
+        }
+        .confirmationDialog("Причина жалобы", isPresented: $showReportDialog, titleVisibility: .visible) {
+            ForEach(reportReasons, id: \.self) { reason in
+                Button(reason) {
+                    Task {
+                        await ReportService.fileReport(
+                            type: .ad,
+                            contentId: ad.id,
+                            contentPreview: ad.title,
+                            reportedUid: ad.sellerId,
+                            reportedName: ad.sellerDisplayName,
+                            reporterId: authViewModel.user?.uid ?? "",
+                            reason: reason
+                        )
+                        showReportSentAlert = true
+                    }
+                }
+            }
+            Button("Отмена", role: .cancel) {}
+        }
+        .alert("Жалоба отправлена", isPresented: $showReportSentAlert) {
+            Button("Ок", role: .cancel) {}
+        } message: {
+            Text("Мы передали её администратору.")
+        }
+        .alert("Заблокировать продавца?", isPresented: $showBlockConfirm) {
+            Button("Отмена", role: .cancel) {}
+            Button("Заблокировать", role: .destructive) {
+                Task { await authViewModel.blockUser(ad.sellerId) }
+            }
+        } message: {
+            Text("Его объявления и посты пропадут из вашей ленты.")
+        }
+        .alert("Разблокировать продавца?", isPresented: $showUnblockConfirm) {
+            Button("Отмена", role: .cancel) {}
+            Button("Разблокировать") {
+                Task { await authViewModel.unblockUser(ad.sellerId) }
+            }
+        }
     }
 
     private var isOwnAd: Bool { authViewModel.user?.uid == ad.sellerId }

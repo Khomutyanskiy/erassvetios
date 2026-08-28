@@ -14,13 +14,15 @@ struct AuthView: View {
     @State private var password = ""
     @State private var confirmPassword = ""
     @State private var showForgotPassword = false
+    @State private var acceptedTerms = false
+    @State private var showTerms = false
 
     private var passwordsMismatch: Bool {
         isSignUp && !confirmPassword.isEmpty && password != confirmPassword
     }
 
     private var isFormValid: Bool {
-        guard !email.isEmpty, !password.isEmpty else { return false }
+        guard !email.isEmpty, !password.isEmpty, acceptedTerms else { return false }
         if isSignUp {
             return !confirmPassword.isEmpty && password == confirmPassword
         }
@@ -114,6 +116,35 @@ struct AuthView: View {
                         .multilineTextAlignment(.center)
                 }
 
+                VStack(alignment: .leading, spacing: 4) {
+                    Button {
+                        acceptedTerms.toggle()
+                    } label: {
+                        HStack(alignment: .top, spacing: 10) {
+                            Image(systemName: acceptedTerms ? "checkmark.square.fill" : "square")
+                                .foregroundColor(acceptedTerms ? AppTheme.accent : AppTheme.textSecondary)
+                                .font(.system(size: 18))
+
+                            Text("Я принимаю условия использования")
+                                .font(.footnote)
+                                .foregroundColor(AppTheme.textSecondary)
+                                .multilineTextAlignment(.leading)
+
+                            Spacer(minLength: 0)
+                        }
+                    }
+                    .buttonStyle(.plain)
+
+                    Button {
+                        showTerms = true
+                    } label: {
+                        Text("Открыть текст условий использования")
+                            .font(.caption)
+                            .foregroundColor(AppTheme.accent)
+                    }
+                    .padding(.leading, 28)
+                }
+
                 if let error = authViewModel.errorMessage {
                     Text(error)
                         .font(.footnote)
@@ -167,6 +198,9 @@ struct AuthView: View {
         }
         .sheet(isPresented: $showForgotPassword) {
             ForgotPasswordView(email: email).environmentObject(authViewModel)
+        }
+        .sheet(isPresented: $showTerms) {
+            TermsOfUseView()
         }
     }
 }

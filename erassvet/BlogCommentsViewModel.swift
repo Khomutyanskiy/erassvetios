@@ -52,6 +52,10 @@ final class BlogCommentsViewModel: ObservableObject {
     func addComment(postId: String, authorId: String, authorName: String, authorPhotoURL: String?, text: String) async -> Bool {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, !isSubmitting else { return false }
+        if let violation = ContentModerationService.violationMessage(for: trimmed) {
+            errorMessage = violation
+            return false
+        }
         isSubmitting = true
         errorMessage = nil
         defer { isSubmitting = false }

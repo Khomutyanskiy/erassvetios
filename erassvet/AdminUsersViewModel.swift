@@ -44,4 +44,11 @@ final class AdminUsersViewModel: ObservableObject {
         listener?.remove()
         listener = nil
     }
+
+    /// Bans/unbans a user directly from the users list. Banning is enforced
+    /// client-side in real time — see `AuthViewModel.observeUserDocument`.
+    func setBanned(_ user: AppUser, banned: Bool) async {
+        try? await Firestore.firestore().collection("users").document(user.id)
+            .setData(["isBanned": banned], merge: true)
+    }
 }

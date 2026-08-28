@@ -33,6 +33,11 @@ final class AuthViewModel: ObservableObject {
     /// User role, mirrored in real time from Firestore ("users/{uid}.role").
     /// Defaults to "user"; set to "admin" manually in Firestore to unlock the admin panel.
     @Published var role: String = "user"
+    /// Uids this user has chosen to block — mirrored live from
+    /// "users/{uid}.blockedUsers". Ads/blog posts by a blocked author are
+    /// filtered out of the feed/blog immediately on the client (see
+    /// FeedView/BlogView), and the block also prevents new chats.
+    @Published var blockedUserIds: Set<String> = []
 
     private var authHandle: AuthStateDidChangeListenerHandle?
     private var userDocListener: ListenerRegistration?
@@ -60,6 +65,7 @@ final class AuthViewModel: ObservableObject {
         userDocListener = nil
         guard let uid = user?.uid else {
             role = "user"
+            blockedUserIds = []
             return
         }
         userDocListener = Firestore.firestore()
@@ -67,9 +73,52 @@ final class AuthViewModel: ObservableObject {
             .document(uid)
             .addSnapshotListener { [weak self] snapshot, _ in
                 guard let self else { return }
-                self.role = (snapshot?.data()?["role"] as? String) ?? "user"
+                let data = snapshot?.data() ?? [:]
+                self.role = data["role"] as? String ?? "user"
+                self.blockedUserIds = Set(data["blockedUsers"] as? [String] ?? [])
+
+                // An admin banning this account (per the "Жалобы" queue)
+                // takes effect immediately — this is the client-side half of
+                // App Store Guideline 1.2's 24h-response requirement; a
+                // banned user simply can't stay signed in.
+                if data["isBanned"] as? Bool == true {
+                    self.errorMessage = "Ваш аккаунт заблокирован администратором за нарушение правил использования."
+                    self.signOut()
+                }
             }
     }
+
+    /// Adds/removes `uid` from the current user's block list ("users/{me}.
+    /// blockedUsers"). Blocking hides that author's ads/blog posts from the
+    /// feed immediately (see FeedView/BlogView) and is separate from a
+    /// per-chat block (`Chat.blockedBy`), which only affects one thread.
+    @discardableResult
+    func blockUser(_ uid: String) async -> Bool {
+        guard let me = user?.uid, me != uid else { return false }
+        do {
+            try await Firestore.firestore().collection("users").document(me)
+                .setData(["blockedUsers": FieldValue.arrayUnion([uid])], merge: true)
+            return true
+        } catch {
+            errorMessage = error.localizedDescription
+            return false
+        }
+    }
+
+    @discardableResult
+    func unblockUser(_ uid: String) async -> Bool {
+        guard let me = user?.uid else { return false }
+        do {
+            try await Firestore.firestore().collection("users").document(me)
+                .setData(["blockedUsers": FieldValue.arrayRemove([uid])], merge: true)
+            return true
+        } catch {
+            errorMessage = error.localizedDescription
+            return false
+        }
+    }
+
+    func isBlocked(_ uid: String) -> Bool { blockedUserIds.contains(uid) }
 
     func signIn(email: String, password: String) async {
         isLoading = true
@@ -104,6 +153,9 @@ final class AuthViewModel: ObservableObject {
             "email": user.email ?? "",
             "displayName": user.displayName ?? "",
             "role": "user",
+            "isBanned": false,
+            "blockedUsers": [String](),
+            "acceptedTermsAt": FieldValue.serverTimestamp(),
             "createdAt": FieldValue.serverTimestamp()
         ]
         do {

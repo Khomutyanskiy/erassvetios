@@ -155,6 +155,14 @@ struct ChatDetailView: View {
                 Task { await chatsViewModel.setBlocked(chatId: chat.id, uid: currentUid, blocked: false) }
             }
         }
+        .alert("Сообщение не отправлено", isPresented: Binding(
+            get: { chatsViewModel.errorMessage != nil },
+            set: { if !$0 { chatsViewModel.errorMessage = nil } }
+        )) {
+            Button("Понятно", role: .cancel) { chatsViewModel.errorMessage = nil }
+        } message: {
+            Text(chatsViewModel.errorMessage ?? "")
+        }
         .fullScreenCover(isPresented: Binding(
             get: { fullScreenImageURL != nil },
             set: { if !$0 { fullScreenImageURL = nil } }

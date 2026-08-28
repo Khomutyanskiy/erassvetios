@@ -52,6 +52,7 @@ struct FeedView: View {
         let maxPrice = Double(maxPriceText.replacingOccurrences(of: " ", with: ""))
 
         let filtered = adsListViewModel.ads.filter { ad in
+            guard !authViewModel.blockedUserIds.contains(ad.sellerId) else { return false }
             let matchesCategory = selectedCategory == "Все" || ad.category == selectedCategory
             let matchesDealType = selectedDealType == "Все" || ad.dealType.title == selectedDealType
             let matchesSearch = trimmedSearch.isEmpty

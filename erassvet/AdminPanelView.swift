@@ -39,6 +39,14 @@ struct AdminPanelView: View {
 
                     VStack(spacing: 0) {
                         NavigationLink {
+                            AdminReportsView()
+                        } label: {
+                            AdminMenuRow(icon: "exclamationmark.bubble", title: "Жалобы")
+                        }
+
+                        Divider().overlay(AppTheme.cardBorder)
+
+                        NavigationLink {
                             AdminCategoriesView()
                         } label: {
                             AdminMenuRow(icon: "tag", title: "Категории объявлений")

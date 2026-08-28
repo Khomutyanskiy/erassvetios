@@ -19,6 +19,10 @@ struct AppUser: Identifiable, Hashable {
     let role: String
     let photoURL: String?
     let createdAt: Date?
+    /// Set by an admin from the "Жалобы" queue (or directly here) — a
+    /// banned user is signed out client-side in real time, see
+    /// `AuthViewModel.observeUserDocument`.
+    let isBanned: Bool
 
     init(id: String, data: [String: Any]) {
         self.id = id
@@ -26,6 +30,7 @@ struct AppUser: Identifiable, Hashable {
         self.displayName = data["displayName"] as? String ?? ""
         self.role = data["role"] as? String ?? "user"
         self.photoURL = data["photoURL"] as? String
+        self.isBanned = data["isBanned"] as? Bool ?? false
         if let timestamp = data["createdAt"] as? Timestamp {
             self.createdAt = timestamp.dateValue()
         } else {

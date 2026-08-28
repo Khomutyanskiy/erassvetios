@@ -724,6 +724,11 @@ struct PostAdView: View {
     private func publish() async {
         guard let user = authViewModel.user else { return }
 
+        if let violation = ContentModerationService.violationMessage(for: "\(title) \(description)") {
+            adsViewModel.errorMessage = violation
+            return
+        }
+
         var initialStatus: AdStatus = .active
         if existingAd == nil {
             let activeCount = await adsViewModel.activeAdCount(for: user.uid)

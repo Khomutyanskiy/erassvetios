@@ -218,6 +218,12 @@ struct CreateBlogPostView: View {
 
     private func submit() async {
         guard let user = authViewModel.user else { return }
+
+        if let violation = ContentModerationService.violationMessage(for: text) {
+            viewModel.errorMessage = violation
+            return
+        }
+
         let success: Bool
         if let existing {
             success = await viewModel.updateOwnPost(existing, text: text, imageSlots: imageSlots)

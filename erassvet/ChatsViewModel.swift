@@ -119,6 +119,10 @@ final class ChatsViewModel: ObservableObject {
     func sendMessage(chatId: String, senderId: String, otherUid: String, text: String) async -> Bool {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return false }
+        if let violation = ContentModerationService.violationMessage(for: trimmed) {
+            errorMessage = violation
+            return false
+        }
         return await writeMessage(chatId: chatId, senderId: senderId, otherUid: otherUid, text: trimmed, imageURL: nil, previewText: trimmed)
     }
 
@@ -242,23 +246,24 @@ final class ChatsViewModel: ObservableObject {
     }
 
     /// Files a report against the other participant of a chat, for admin
-    /// review (Firestore "reports" collection — writable by anyone but only
-    /// readable by admins, same pattern as other admin-only collections).
+    /// review — goes into the same unified "reports" queue as ad/blog-post
+    /// reports (see `ReportService`/`AdminReportsView`).
     @discardableResult
     func submitReport(chatId: String, reportedUid: String, reporterId: String, reason: String) async -> Bool {
-        do {
-            try await Firestore.firestore().collection("reports").addDocument(data: [
-                "chatId": chatId,
-                "reportedUid": reportedUid,
-                "reporterId": reporterId,
-                "reason": reason,
-                "createdAt": FieldValue.serverTimestamp()
-            ])
-            return true
-        } catch {
-            errorMessage = error.localizedDescription
-            return false
+        let reportedName = chats.first(where: { $0.id == chatId })?.otherParticipantName(currentUid: reporterId) ?? "Пользователь"
+        let success = await ReportService.fileReport(
+            type: .chat,
+            contentId: chatId,
+            contentPreview: "",
+            reportedUid: reportedUid,
+            reportedName: reportedName,
+            reporterId: reporterId,
+            reason: reason
+        )
+        if !success {
+            errorMessage = "Не удалось отправить жалобу."
         }
+        return success
     }
 
     /// Deletes a chat thread (its message subcollection is left behind in

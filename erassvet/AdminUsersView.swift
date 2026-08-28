@@ -53,7 +53,9 @@ struct AdminUsersView: View {
 
                     VStack(spacing: 10) {
                         ForEach(usersViewModel.users) { user in
-                            UserRow(user: user)
+                            UserRow(user: user) {
+                                Task { await usersViewModel.setBanned(user, banned: !user.isBanned) }
+                            }
                         }
                     }
                 }
@@ -71,6 +73,7 @@ struct AdminUsersView: View {
 
 private struct UserRow: View {
     let user: AppUser
+    let onToggleBan: () -> Void
 
     var body: some View {
         HStack(spacing: 14) {
@@ -120,6 +123,16 @@ private struct UserRow: View {
                             .background(AppTheme.accent.opacity(0.16))
                             .clipShape(Capsule())
                     }
+
+                    if user.isBanned {
+                        Text("заблокирован")
+                            .font(.caption2.bold())
+                            .foregroundColor(.red)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 2)
+                            .background(Color.red.opacity(0.14))
+                            .clipShape(Capsule())
+                    }
                 }
 
                 if !user.email.isEmpty {
@@ -137,6 +150,16 @@ private struct UserRow: View {
             }
 
             Spacer()
+
+            if !user.isAdmin {
+                Button(action: onToggleBan) {
+                    Image(systemName: user.isBanned ? "checkmark.circle" : "hand.raised")
+                        .foregroundColor(user.isBanned ? Color(hex: "3FBF7F") : .red)
+                        .padding(8)
+                        .background((user.isBanned ? Color(hex: "3FBF7F") : Color.red).opacity(0.12))
+                        .clipShape(Circle())
+                }
+            }
         }
         .padding(14)
         .background(AppTheme.card)

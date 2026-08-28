@@ -22,8 +22,15 @@ struct BlogPostDetailView: View {
     @State private var commentText = ""
     @State private var showAuth = false
     @State private var pendingCommentDelete: BlogComment?
+    @State private var showReportDialog = false
+    @State private var showReportSentAlert = false
+    @State private var showBlockConfirm = false
+    @State private var showUnblockConfirm = false
 
+    private let reportReasons = ["Спам или реклама", "Мошенничество", "Оскорбления", "Недопустимый контент", "Другое"]
     private var currentUid: String? { authViewModel.user?.uid }
+    private var isOwnPost: Bool { post.authorId == currentUid }
+    private var isBlocked: Bool { authViewModel.isBlocked(post.authorId) }
 
     var body: some View {
         NavigationStack {
@@ -137,6 +144,77 @@ struct BlogPostDetailView: View {
                 Image(systemName: "square.and.arrow.up")
                     .font(.footnote)
                     .foregroundColor(AppTheme.textSecondary)
+            }
+
+            if !isOwnPost {
+                reportMenu
+            }
+        }
+    }
+
+    /// "..." menu with report/block actions for the post's author — hidden
+    /// on your own posts. Mirrors `AdDetailView.reportMenu`.
+    private var reportMenu: some View {
+        Menu {
+            Button {
+                if currentUid == nil { showAuth = true } else { showReportDialog = true }
+            } label: {
+                Label("Пожаловаться на пост", systemImage: "exclamationmark.bubble")
+            }
+
+            if isBlocked {
+                Button {
+                    showUnblockConfirm = true
+                } label: {
+                    Label("Разблокировать автора", systemImage: "checkmark.circle")
+                }
+            } else {
+                Button(role: .destructive) {
+                    if currentUid == nil { showAuth = true } else { showBlockConfirm = true }
+                } label: {
+                    Label("Заблокировать автора", systemImage: "hand.raised")
+                }
+            }
+        } label: {
+            Image(systemName: "ellipsis.circle")
+                .foregroundColor(AppTheme.textSecondary)
+        }
+        .confirmationDialog("Причина жалобы", isPresented: $showReportDialog, titleVisibility: .visible) {
+            ForEach(reportReasons, id: \.self) { reason in
+                Button(reason) {
+                    Task {
+                        await ReportService.fileReport(
+                            type: .blogPost,
+                            contentId: post.id,
+                            contentPreview: post.text,
+                            reportedUid: post.authorId,
+                            reportedName: post.authorName,
+                            reporterId: currentUid ?? "",
+                            reason: reason
+                        )
+                        showReportSentAlert = true
+                    }
+                }
+            }
+            Button("Отмена", role: .cancel) {}
+        }
+        .alert("Жалоба отправлена", isPresented: $showReportSentAlert) {
+            Button("Ок", role: .cancel) {}
+        } message: {
+            Text("Мы передали её администратору.")
+        }
+        .alert("Заблокировать автора?", isPresented: $showBlockConfirm) {
+            Button("Отмена", role: .cancel) {}
+            Button("Заблокировать", role: .destructive) {
+                Task { await authViewModel.blockUser(post.authorId) }
+            }
+        } message: {
+            Text("Его объявления и посты пропадут из вашей ленты.")
+        }
+        .alert("Разблокировать автора?", isPresented: $showUnblockConfirm) {
+            Button("Отмена", role: .cancel) {}
+            Button("Разблокировать") {
+                Task { await authViewModel.unblockUser(post.authorId) }
             }
         }
     }

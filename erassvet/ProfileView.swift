@@ -16,6 +16,7 @@ struct ProfileView: View {
     @State private var showAdminPanel = false
     @State private var showDeleteAccount = false
     @State private var editingAd: Ad?
+    @State private var showTerms = false
 
     var body: some View {
         content
@@ -125,6 +126,12 @@ struct ProfileView: View {
 
                             SettingsRow(icon: "questionmark.circle", title: "Помощь", showChevron: true) {
                                 showHelp = true
+                            }
+
+                            Divider().overlay(AppTheme.cardBorder)
+
+                            SettingsRow(icon: "doc.text", title: "Условия использования", showChevron: true) {
+                                showTerms = true
                             }
 
                             Divider().overlay(AppTheme.cardBorder)
@@ -241,6 +248,9 @@ struct ProfileView: View {
         }
         .sheet(item: $editingAd) { ad in
             PostAdView(existingAd: ad).environmentObject(authViewModel)
+        }
+        .sheet(isPresented: $showTerms) {
+            TermsOfUseView()
         }
     }
 }

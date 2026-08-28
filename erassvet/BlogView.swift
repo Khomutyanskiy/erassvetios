@@ -19,6 +19,12 @@ struct BlogView: View {
     @State private var editingPost: BlogPost?
     @State private var openedPost: BlogPost?
 
+    /// Posts by an author the current user has blocked disappear from the
+    /// feed immediately (client-side filter — see `AuthViewModel.blockUser`).
+    private var visiblePosts: [BlogPost] {
+        viewModel.posts.filter { !authViewModel.blockedUserIds.contains($0.authorId) }
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -50,7 +56,7 @@ struct BlogView: View {
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.top, 24)
-                    } else if viewModel.posts.isEmpty {
+                    } else if visiblePosts.isEmpty {
                         VStack(spacing: 8) {
                             Image(systemName: "text.bubble")
                                 .font(.system(size: 32))
@@ -63,7 +69,7 @@ struct BlogView: View {
                         .padding(.top, 24)
                     } else {
                         VStack(spacing: 14) {
-                            ForEach(viewModel.posts) { post in
+                            ForEach(visiblePosts) { post in
                                 BlogPostCard(
                                     post: post,
                                     isOwnPost: post.authorId == authViewModel.user?.uid,
