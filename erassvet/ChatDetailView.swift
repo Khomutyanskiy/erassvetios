@@ -43,6 +43,17 @@ struct ChatDetailView: View {
     private var isBlockedByMe: Bool { liveChat.isBlockedByMe(currentUid: currentUid) }
 
     var body: some View {
+        let styled = messageList
+            .background(AppTheme.background.ignoresSafeArea())
+            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarBackButtonHidden(true)
+            .toolbar { toolbarContent }
+        let withReportAlerts = attachReportAlerts(styled)
+        let withOverlays = attachOverlays(withReportAlerts)
+        return attachLifecycle(withOverlays)
+    }
+
+    private var messageList: some View {
         VStack(spacing: 0) {
             ScrollViewReader { proxy in
                 ScrollView {
@@ -76,128 +87,149 @@ struct ChatDetailView: View {
 
             inputBar
         }
-        .background(AppTheme.background.ignoresSafeArea())
-        .navigationBarTitleDisplayMode(.inline)
-        .navigationBarBackButtonHidden(true)
-        .toolbar {
-            ToolbarItem(placement: .principal) {
-                Text(otherName)
-                    .font(.headline)
-                    .foregroundColor(AppTheme.textPrimary)
-            }
-            ToolbarItem(placement: .navigationBarLeading) {
-                Button {
-                    dismiss()
-                } label: {
-                    Image(systemName: "chevron.left")
-                        .foregroundColor(AppTheme.textSecondary)
-                }
-            }
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Menu {
-                    Button {
-                        showReportDialog = true
-                    } label: {
-                        Label("Пожаловаться", systemImage: "exclamationmark.bubble")
-                    }
+    }
 
-                    if isBlockedByMe {
-                        Button {
-                            showUnblockConfirm = true
-                        } label: {
-                            Label("Разблокировать", systemImage: "checkmark.circle")
-                        }
-                    } else {
-                        Button(role: .destructive) {
-                            showBlockConfirm = true
-                        } label: {
-                            Label("Заблокировать", systemImage: "hand.raised")
-                        }
-                    }
+    @ToolbarContentBuilder
+    private var toolbarContent: some ToolbarContent {
+        ToolbarItem(placement: .principal) {
+            Text(otherName)
+                .font(.headline)
+                .foregroundColor(AppTheme.textPrimary)
+        }
+        ToolbarItem(placement: .navigationBarLeading) {
+            Button {
+                dismiss()
+            } label: {
+                Image(systemName: "chevron.left")
+                    .foregroundColor(AppTheme.textSecondary)
+            }
+        }
+        ToolbarItem(placement: .navigationBarTrailing) {
+            Menu {
+                Button {
+                    showReportDialog = true
                 } label: {
-                    Image(systemName: "ellipsis.circle")
-                        .foregroundColor(AppTheme.textSecondary)
+                    Label("Пожаловаться", systemImage: "exclamationmark.bubble")
                 }
-            }
-        }
-        .confirmationDialog("Причина жалобы", isPresented: $showReportDialog, titleVisibility: .visible) {
-            ForEach(reportReasons, id: \.self) { reason in
-                Button(reason) {
-                    Task {
-                        _ = await chatsViewModel.submitReport(
-                            chatId: chat.id,
-                            reportedUid: chat.otherParticipantId(currentUid: currentUid),
-                            reporterId: currentUid,
-                            reason: reason
-                        )
-                        showReportSentAlert = true
+
+                if isBlockedByMe {
+                    Button {
+                        showUnblockConfirm = true
+                    } label: {
+                        Label("Разблокировать", systemImage: "checkmark.circle")
+                    }
+                } else {
+                    Button(role: .destructive) {
+                        showBlockConfirm = true
+                    } label: {
+                        Label("Заблокировать", systemImage: "hand.raised")
                     }
                 }
-            }
-            Button("Отмена", role: .cancel) {}
-        }
-        .alert("Жалоба отправлена", isPresented: $showReportSentAlert) {
-            Button("Ок", role: .cancel) {}
-        } message: {
-            Text("Мы передали её администратору.")
-        }
-        .alert("Заблокировать собеседника?", isPresented: $showBlockConfirm) {
-            Button("Отмена", role: .cancel) {}
-            Button("Заблокировать", role: .destructive) {
-                Task { await chatsViewModel.setBlocked(chatId: chat.id, uid: currentUid, blocked: true) }
-            }
-        } message: {
-            Text("Переписка станет недоступна для отправки сообщений с обеих сторон.")
-        }
-        .alert("Разблокировать собеседника?", isPresented: $showUnblockConfirm) {
-            Button("Отмена", role: .cancel) {}
-            Button("Разблокировать") {
-                Task { await chatsViewModel.setBlocked(chatId: chat.id, uid: currentUid, blocked: false) }
+            } label: {
+                Image(systemName: "ellipsis.circle")
+                    .foregroundColor(AppTheme.textSecondary)
             }
         }
-        .alert("Сообщение не отправлено", isPresented: Binding(
+    }
+
+    /// Report dialog + block/unblock confirmations, split out of `body` so
+    /// the type-checker isn't asked to solve one giant modifier chain (that
+    /// alone caused "unable to type-check in reasonable time" once the
+    /// photo-sending overlays were added alongside these).
+    @ViewBuilder
+    private func attachReportAlerts<Content: View>(_ content: Content) -> some View {
+        content
+            .confirmationDialog("Причина жалобы", isPresented: $showReportDialog, titleVisibility: .visible) {
+                ForEach(reportReasons, id: \.self) { reason in
+                    Button(reason) {
+                        Task {
+                            _ = await chatsViewModel.submitReport(
+                                chatId: chat.id,
+                                reportedUid: chat.otherParticipantId(currentUid: currentUid),
+                                reporterId: currentUid,
+                                reason: reason
+                            )
+                            showReportSentAlert = true
+                        }
+                    }
+                }
+                Button("Отмена", role: .cancel) {}
+            }
+            .alert("Жалоба отправлена", isPresented: $showReportSentAlert) {
+                Button("Ок", role: .cancel) {}
+            } message: {
+                Text("Мы передали её администратору.")
+            }
+            .alert("Заблокировать собеседника?", isPresented: $showBlockConfirm) {
+                Button("Отмена", role: .cancel) {}
+                Button("Заблокировать", role: .destructive) {
+                    Task { await chatsViewModel.setBlocked(chatId: chat.id, uid: currentUid, blocked: true) }
+                }
+            } message: {
+                Text("Переписка станет недоступна для отправки сообщений с обеих сторон.")
+            }
+            .alert("Разблокировать собеседника?", isPresented: $showUnblockConfirm) {
+                Button("Отмена", role: .cancel) {}
+                Button("Разблокировать") {
+                    Task { await chatsViewModel.setBlocked(chatId: chat.id, uid: currentUid, blocked: false) }
+                }
+            }
+    }
+
+    /// Send-error alert + fullscreen image viewer + photo-picker plumbing.
+    @ViewBuilder
+    private func attachOverlays<Content: View>(_ content: Content) -> some View {
+        let errorBinding = Binding<Bool>(
             get: { chatsViewModel.errorMessage != nil },
             set: { if !$0 { chatsViewModel.errorMessage = nil } }
-        )) {
-            Button("Понятно", role: .cancel) { chatsViewModel.errorMessage = nil }
-        } message: {
-            Text(chatsViewModel.errorMessage ?? "")
-        }
-        .fullScreenCover(isPresented: Binding(
+        )
+        let imageBinding = Binding<Bool>(
             get: { fullScreenImageURL != nil },
             set: { if !$0 { fullScreenImageURL = nil } }
-        )) {
-            if let url = fullScreenImageURL {
-                FullScreenImageViewer(imageURLs: [url], selectedIndex: .constant(0))
+        )
+        content
+            .alert("Сообщение не отправлено", isPresented: errorBinding) {
+                Button("Понятно", role: .cancel) { chatsViewModel.errorMessage = nil }
+            } message: {
+                Text(chatsViewModel.errorMessage ?? "")
             }
-        }
-        .onChange(of: pickerItem) { newItem in
-            guard let newItem else { return }
-            Task { await sendPickedImage(newItem) }
-        }
-        .onAppear {
-            messagesViewModel.startListening(chatId: chat.id)
-            Task { await chatsViewModel.markRead(chatId: chat.id, uid: currentUid) }
-            if let user = authViewModel.user {
-                Task {
-                    await chatsViewModel.syncOwnProfile(
-                        chat: chat,
-                        uid: currentUid,
-                        displayName: user.displayNameOrFallback,
-                        photoURL: user.photoURL?.absoluteString
-                    )
+            .fullScreenCover(isPresented: imageBinding) {
+                if let url = fullScreenImageURL {
+                    FullScreenImageViewer(imageURLs: [url], selectedIndex: .constant(0))
                 }
             }
-            if isPushedInTabBar {
-                isTabBarHidden.wrappedValue = true
+            .onChange(of: pickerItem) { newItem in
+                guard let newItem else { return }
+                Task { await sendPickedImage(newItem) }
             }
-        }
-        .onDisappear {
-            messagesViewModel.stopListening()
-            if isPushedInTabBar {
-                isTabBarHidden.wrappedValue = false
+    }
+
+    @ViewBuilder
+    private func attachLifecycle<Content: View>(_ content: Content) -> some View {
+        content
+            .onAppear {
+                messagesViewModel.startListening(chatId: chat.id)
+                Task { await chatsViewModel.markRead(chatId: chat.id, uid: currentUid) }
+                if let user = authViewModel.user {
+                    Task {
+                        await chatsViewModel.syncOwnProfile(
+                            chat: chat,
+                            uid: currentUid,
+                            displayName: user.displayNameOrFallback,
+                            photoURL: user.photoURL?.absoluteString
+                        )
+                    }
+                }
+                if isPushedInTabBar {
+                    isTabBarHidden.wrappedValue = true
+                }
             }
-        }
+            .onDisappear {
+                messagesViewModel.stopListening()
+                if isPushedInTabBar {
+                    isTabBarHidden.wrappedValue = false
+                }
+            }
     }
 
     private let reportReasons = ["Спам или реклама", "Мошенничество", "Оскорбления", "Другое"]

@@ -16,13 +16,21 @@ struct AuthView: View {
     @State private var showForgotPassword = false
     @State private var acceptedTerms = false
     @State private var showTerms = false
+    /// Shown when the person taps "Войти"/"Зарегистрироваться" without
+    /// checking the terms box — the button stays enabled (rather than
+    /// silently disabled) specifically so tapping it can explain why nothing
+    /// happens instead of leaving them guessing.
+    @State private var showTermsRequiredHint = false
 
     private var passwordsMismatch: Bool {
         isSignUp && !confirmPassword.isEmpty && password != confirmPassword
     }
 
+    /// Everything except the terms checkbox — that's checked separately on
+    /// tap (see `attemptSubmit`) so we can surface a clear reason instead of
+    /// just leaving the button disabled.
     private var isFormValid: Bool {
-        guard !email.isEmpty, !password.isEmpty, acceptedTerms else { return false }
+        guard !email.isEmpty, !password.isEmpty else { return false }
         if isSignUp {
             return !confirmPassword.isEmpty && password == confirmPassword
         }
@@ -119,15 +127,16 @@ struct AuthView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Button {
                         acceptedTerms.toggle()
+                        if acceptedTerms { showTermsRequiredHint = false }
                     } label: {
                         HStack(alignment: .top, spacing: 10) {
                             Image(systemName: acceptedTerms ? "checkmark.square.fill" : "square")
-                                .foregroundColor(acceptedTerms ? AppTheme.accent : AppTheme.textSecondary)
+                                .foregroundColor(acceptedTerms ? AppTheme.accent : (showTermsRequiredHint ? .red : AppTheme.textSecondary))
                                 .font(.system(size: 18))
 
                             Text("Я принимаю условия использования")
                                 .font(.footnote)
-                                .foregroundColor(AppTheme.textSecondary)
+                                .foregroundColor(showTermsRequiredHint ? .red : AppTheme.textSecondary)
                                 .multilineTextAlignment(.leading)
 
                             Spacer(minLength: 0)
@@ -143,6 +152,13 @@ struct AuthView: View {
                             .foregroundColor(AppTheme.accent)
                     }
                     .padding(.leading, 28)
+
+                    if showTermsRequiredHint {
+                        Text("Отметьте, что принимаете условия использования, чтобы продолжить")
+                            .font(.footnote)
+                            .foregroundColor(.red)
+                            .padding(.leading, 28)
+                    }
                 }
 
                 if let error = authViewModel.errorMessage {
@@ -153,16 +169,7 @@ struct AuthView: View {
                 }
 
                 Button {
-                    Task {
-                        if isSignUp {
-                            await authViewModel.signUp(email: email, password: password)
-                        } else {
-                            await authViewModel.signIn(email: email, password: password)
-                        }
-                        if authViewModel.isAuthenticated {
-                            dismiss()
-                        }
-                    }
+                    attemptSubmit()
                 } label: {
                     HStack {
                         if authViewModel.isLoading {
@@ -201,6 +208,23 @@ struct AuthView: View {
         }
         .sheet(isPresented: $showTerms) {
             TermsOfUseView()
+        }
+    }
+
+    private func attemptSubmit() {
+        guard acceptedTerms else {
+            showTermsRequiredHint = true
+            return
+        }
+        Task {
+            if isSignUp {
+                await authViewModel.signUp(email: email, password: password)
+            } else {
+                await authViewModel.signIn(email: email, password: password)
+            }
+            if authViewModel.isAuthenticated {
+                dismiss()
+            }
         }
     }
 }

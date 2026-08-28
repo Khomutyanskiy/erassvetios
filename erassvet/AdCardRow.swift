@@ -42,8 +42,8 @@ struct AdCardRow: View {
                                 .font(.caption)
                                 .padding(.horizontal, 10)
                                 .padding(.vertical, 4)
-                                .background((AppTheme.categoryColors[ad.category] ?? AppTheme.accent).opacity(0.18))
-                                .foregroundColor(AppTheme.categoryColors[ad.category] ?? AppTheme.accent)
+                                .background((AppTheme.colorForCategory(ad.category)).opacity(0.18))
+                                .foregroundColor(AppTheme.colorForCategory(ad.category))
                                 .clipShape(Capsule())
 
                             Text(ad.dealType.title)
@@ -134,11 +134,11 @@ struct AdCardRow: View {
 
     private var thumbnailPlaceholder: some View {
         RoundedRectangle(cornerRadius: 14)
-            .fill((AppTheme.categoryColors[ad.category] ?? AppTheme.accent).opacity(0.25))
+            .fill((AppTheme.colorForCategory(ad.category)).opacity(0.25))
             .frame(width: 64, height: 64)
             .overlay(
                 Image(systemName: ad.iconName)
-                    .foregroundColor(AppTheme.categoryColors[ad.category] ?? AppTheme.accent)
+                    .foregroundColor(AppTheme.colorForCategory(ad.category))
                     .font(.system(size: 22))
             )
     }

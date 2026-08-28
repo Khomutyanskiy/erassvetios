@@ -248,6 +248,10 @@ private struct BlogPostCard: View {
             .foregroundColor(AppTheme.textSecondary)
 
             Spacer()
+
+            if !isOwnPost {
+                SubscribeButton(authorId: post.authorId, onRequireAuth: onRequireAuth)
+            }
         }
         .font(.subheadline)
     }

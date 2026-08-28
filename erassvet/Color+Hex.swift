@@ -39,13 +39,34 @@ enum AppTheme {
     static let textSecondary = Color(hex: "8A93A6")
     static let searchBarBackground = Color(hex: "121B2E")
 
-    static let categoryColors: [String: Color] = [
-        "Строительство": Color(hex: "3D7DFF"),
-        "Транспорт": Color(hex: "3FBF7F"),
-        "Продукты": Color(hex: "C98A3D"),
-        "Обучение": Color(hex: "8E6EF0"),
-        "Электроника": Color(hex: "3DBFBF")
+    /// Categories are admin-managed (see `CategoriesViewModel`) — an admin
+    /// can add new ones at any time — so instead of a fixed name→color map
+    /// (which would silently fall back to plain accent-blue for anything not
+    /// hand-listed, as happened with "Подработка"), every category gets a
+    /// color deterministically picked from `categoryPalette` by hashing its
+    /// title. Same title always maps to the same color, and every category,
+    /// present or future, gets a distinct-looking chip automatically.
+    private static let categoryPalette: [Color] = [
+        Color(hex: "3D7DFF"),
+        Color(hex: "3FBF7F"),
+        Color(hex: "C98A3D"),
+        Color(hex: "8E6EF0"),
+        Color(hex: "3DBFBF"),
+        Color(hex: "F0956B"),
+        Color(hex: "E85D9E"),
+        Color(hex: "C9C93D"),
+        Color(hex: "5D9EE8"),
+        Color(hex: "BF5D3D"),
+        Color(hex: "6EE895"),
+        Color(hex: "A03DBF")
     ]
+
+    static func colorForCategory(_ category: String) -> Color {
+        guard !category.isEmpty else { return accent }
+        let hash = category.unicodeScalars.reduce(0) { ($0 &* 31) &+ Int($1.value) }
+        let index = abs(hash) % categoryPalette.count
+        return categoryPalette[index]
+    }
 
     /// One distinct color per deal type ("Предлагаю"/"Требуется"/"Даром"),
     /// used both for the badge on ad cards and the filter chips in the feed.

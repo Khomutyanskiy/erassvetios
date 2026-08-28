@@ -428,11 +428,11 @@ private struct MyAdRow: View {
 
     private var thumbnailPlaceholder: some View {
         RoundedRectangle(cornerRadius: 14)
-            .fill((AppTheme.categoryColors[ad.category] ?? AppTheme.accent).opacity(0.18))
+            .fill((AppTheme.colorForCategory(ad.category)).opacity(0.18))
             .frame(width: 56, height: 56)
             .overlay(
                 Image(systemName: ad.iconName)
-                    .foregroundColor(AppTheme.categoryColors[ad.category] ?? AppTheme.accent)
+                    .foregroundColor(AppTheme.colorForCategory(ad.category))
                     .font(.system(size: 20))
             )
     }

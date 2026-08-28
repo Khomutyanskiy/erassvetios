@@ -140,6 +140,10 @@ struct BlogPostDetailView: View {
 
             Spacer()
 
+            if !isOwnPost {
+                SubscribeButton(authorId: post.authorId, onRequireAuth: { showAuth = true })
+            }
+
             ShareLink(item: shareText) {
                 Image(systemName: "square.and.arrow.up")
                     .font(.footnote)

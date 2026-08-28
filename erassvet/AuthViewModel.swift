@@ -38,6 +38,11 @@ final class AuthViewModel: ObservableObject {
     /// filtered out of the feed/blog immediately on the client (see
     /// FeedView/BlogView), and the block also prevents new chats.
     @Published var blockedUserIds: Set<String> = []
+    /// Author uids this user is subscribed to — mirrored live from
+    /// "users/{uid}.subscriptions". Lets any "Подписаться" button in the app
+    /// (blog post, ad seller card) know instantly whether it's already
+    /// subscribed, without a separate per-author query.
+    @Published var subscribedAuthorIds: Set<String> = []
 
     private var authHandle: AuthStateDidChangeListenerHandle?
     private var userDocListener: ListenerRegistration?
@@ -66,6 +71,7 @@ final class AuthViewModel: ObservableObject {
         guard let uid = user?.uid else {
             role = "user"
             blockedUserIds = []
+            subscribedAuthorIds = []
             return
         }
         userDocListener = Firestore.firestore()
@@ -76,6 +82,7 @@ final class AuthViewModel: ObservableObject {
                 let data = snapshot?.data() ?? [:]
                 self.role = data["role"] as? String ?? "user"
                 self.blockedUserIds = Set(data["blockedUsers"] as? [String] ?? [])
+                self.subscribedAuthorIds = Set(data["subscriptions"] as? [String] ?? [])
 
                 // An admin banning this account (per the "Жалобы" queue)
                 // takes effect immediately — this is the client-side half of
@@ -119,6 +126,45 @@ final class AuthViewModel: ObservableObject {
     }
 
     func isBlocked(_ uid: String) -> Bool { blockedUserIds.contains(uid) }
+
+    func isSubscribed(_ authorId: String) -> Bool { subscribedAuthorIds.contains(authorId) }
+
+    /// Subscribes to `authorId`: adds them to "users/{me}.subscriptions" and
+    /// bumps "user_public/{authorId}.subscribersCount" by 1. The two writes
+    /// aren't transactional (no shared marker doc needed, since "am I
+    /// subscribed" is answered locally from `subscribedAuthorIds`), same
+    /// trade-off already made for `blockUser`.
+    @discardableResult
+    func subscribeToAuthor(_ authorId: String) async -> Bool {
+        guard let me = user?.uid, me != authorId, !isSubscribed(authorId) else { return false }
+        let db = Firestore.firestore()
+        do {
+            try await db.collection("users").document(me)
+                .setData(["subscriptions": FieldValue.arrayUnion([authorId])], merge: true)
+            try? await db.collection("user_public").document(authorId)
+                .setData(["subscribersCount": FieldValue.increment(Int64(1))], merge: true)
+            return true
+        } catch {
+            errorMessage = error.localizedDescription
+            return false
+        }
+    }
+
+    @discardableResult
+    func unsubscribeFromAuthor(_ authorId: String) async -> Bool {
+        guard let me = user?.uid, isSubscribed(authorId) else { return false }
+        let db = Firestore.firestore()
+        do {
+            try await db.collection("users").document(me)
+                .setData(["subscriptions": FieldValue.arrayRemove([authorId])], merge: true)
+            try? await db.collection("user_public").document(authorId)
+                .setData(["subscribersCount": FieldValue.increment(Int64(-1))], merge: true)
+            return true
+        } catch {
+            errorMessage = error.localizedDescription
+            return false
+        }
+    }
 
     func signIn(email: String, password: String) async {
         isLoading = true

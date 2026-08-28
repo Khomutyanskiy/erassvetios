@@ -30,8 +30,6 @@ struct FeedView: View {
     @State private var selectedCategory = "Все"
     @State private var selectedDealType = "Все"
     @State private var searchText = ""
-    @State private var minPriceText = ""
-    @State private var maxPriceText = ""
     @State private var sortOption: FeedSortOption = .newest
     @State private var showAuth = false
     @State private var showAllCategories = false
@@ -42,14 +40,9 @@ struct FeedView: View {
         [.allFilter] + categoriesViewModel.categories
     }
 
-    /// Matches title *and* description (previously title-only), plus an
-    /// optional price range — ads with no price ("Договорная") or that are
-    /// "Даром" are excluded once a price bound is set, since there's nothing
-    /// numeric to compare.
+    /// Matches title *and* description (previously title-only).
     private var filteredAds: [Ad] {
         let trimmedSearch = searchText.trimmingCharacters(in: .whitespaces)
-        let minPrice = Double(minPriceText.replacingOccurrences(of: " ", with: ""))
-        let maxPrice = Double(maxPriceText.replacingOccurrences(of: " ", with: ""))
 
         let filtered = adsListViewModel.ads.filter { ad in
             guard !authViewModel.blockedUserIds.contains(ad.sellerId) else { return false }
@@ -59,14 +52,7 @@ struct FeedView: View {
                 || ad.title.localizedCaseInsensitiveContains(trimmedSearch)
                 || ad.description.localizedCaseInsensitiveContains(trimmedSearch)
 
-            var matchesPrice = true
-            if minPrice != nil || maxPrice != nil {
-                guard let price = ad.price else { return false }
-                if let minPrice, price < minPrice { matchesPrice = false }
-                if let maxPrice, price > maxPrice { matchesPrice = false }
-            }
-
-            return matchesCategory && matchesDealType && matchesSearch && matchesPrice
+            return matchesCategory && matchesDealType && matchesSearch
         }
 
         switch sortOption {
@@ -81,6 +67,16 @@ struct FeedView: View {
         }
     }
 
+    /// Collapsing the filter panel clears every active filter — search,
+    /// category, deal type, and sort — so the filter only ever applies while
+    /// it's visibly expanded, never silently in the background.
+    private func resetFilters() {
+        searchText = ""
+        selectedCategory = "Все"
+        selectedDealType = "Все"
+        sortOption = .newest
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -92,9 +88,7 @@ struct FeedView: View {
                             withAnimation {
                                 showSearch.toggle()
                                 if !showSearch {
-                                    searchText = ""
-                                    minPriceText = ""
-                                    maxPriceText = ""
+                                    resetFilters()
                                 }
                             }
                         },
@@ -103,9 +97,9 @@ struct FeedView: View {
                     )
                     .padding(.top, 8)
 
-                    // Search field, price range and the category/deal-type
-                    // filters are one unit — the magnifier in the header
-                    // reveals and hides all of them together.
+                    // Search field and the category/deal-type filters are one
+                    // unit — the magnifier in the header reveals and hides
+                    // all of them together.
                     if showSearch {
                         VStack(alignment: .leading, spacing: 20) {
                         VStack(spacing: 10) {
@@ -119,24 +113,6 @@ struct FeedView: View {
                             .background(AppTheme.searchBarBackground)
                             .clipShape(RoundedRectangle(cornerRadius: 16))
                             .overlay(RoundedRectangle(cornerRadius: 16).stroke(AppTheme.cardBorder, lineWidth: 1))
-
-                            HStack(spacing: 10) {
-                                TextField("", text: $minPriceText, prompt: Text("Цена от").foregroundColor(AppTheme.textSecondary))
-                                    .keyboardType(.numberPad)
-                                    .foregroundColor(AppTheme.textPrimary)
-                                    .padding(12)
-                                    .background(AppTheme.searchBarBackground)
-                                    .clipShape(RoundedRectangle(cornerRadius: 14))
-                                    .overlay(RoundedRectangle(cornerRadius: 14).stroke(AppTheme.cardBorder, lineWidth: 1))
-
-                                TextField("", text: $maxPriceText, prompt: Text("Цена до").foregroundColor(AppTheme.textSecondary))
-                                    .keyboardType(.numberPad)
-                                    .foregroundColor(AppTheme.textPrimary)
-                                    .padding(12)
-                                    .background(AppTheme.searchBarBackground)
-                                    .clipShape(RoundedRectangle(cornerRadius: 14))
-                                    .overlay(RoundedRectangle(cornerRadius: 14).stroke(AppTheme.cardBorder, lineWidth: 1))
-                            }
                         }
 
                         HStack(spacing: 10) {

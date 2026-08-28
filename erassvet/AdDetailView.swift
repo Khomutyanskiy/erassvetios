@@ -60,8 +60,8 @@ struct AdDetailView: View {
                             .font(.caption)
                             .padding(.horizontal, 10)
                             .padding(.vertical, 4)
-                            .background((AppTheme.categoryColors[ad.category] ?? AppTheme.accent).opacity(0.18))
-                            .foregroundColor(AppTheme.categoryColors[ad.category] ?? AppTheme.accent)
+                            .background((AppTheme.colorForCategory(ad.category)).opacity(0.18))
+                            .foregroundColor(AppTheme.colorForCategory(ad.category))
                             .clipShape(Capsule())
 
                         Text(ad.dealType.title)
@@ -211,14 +211,14 @@ struct AdDetailView: View {
         VStack(spacing: 8) {
             Image(systemName: ad.iconName)
                 .font(.system(size: 40))
-                .foregroundColor(AppTheme.categoryColors[ad.category] ?? AppTheme.accent)
+                .foregroundColor(AppTheme.colorForCategory(ad.category))
             Text("Фото пока недоступно")
                 .font(.caption)
                 .foregroundColor(AppTheme.textSecondary)
         }
         .frame(maxWidth: .infinity)
         .frame(height: 220)
-        .background((AppTheme.categoryColors[ad.category] ?? AppTheme.accent).opacity(0.12))
+        .background((AppTheme.colorForCategory(ad.category)).opacity(0.12))
         .clipShape(RoundedRectangle(cornerRadius: 18))
         .overlay(RoundedRectangle(cornerRadius: 18).stroke(AppTheme.cardBorder, lineWidth: 1))
     }
@@ -313,6 +313,7 @@ struct AdDetailView: View {
             Spacer()
 
             if !isOwnAd {
+                SubscribeButton(authorId: ad.sellerId, onRequireAuth: { showAuth = true })
                 reportMenu
             }
         }
