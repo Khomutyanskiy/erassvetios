@@ -36,21 +36,20 @@ struct AdCardRow: View {
                             .font(.subheadline.bold())
                             .foregroundColor(AppTheme.textPrimary)
                             .lineLimit(1)
-                            .minimumScaleFactor(0.6)
 
                         HStack(spacing: 6) {
                             Text(ad.category)
-                                .font(.caption)
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 4)
+                                .font(.caption2)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 3)
                                 .background((AppTheme.colorForCategory(ad.category)).opacity(0.18))
                                 .foregroundColor(AppTheme.colorForCategory(ad.category))
                                 .clipShape(Capsule())
 
                             Text(ad.dealType.title)
-                                .font(.caption)
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 4)
+                                .font(.caption2)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 3)
                                 .background((AppTheme.dealTypeColors[ad.dealType] ?? AppTheme.accent).opacity(0.18))
                                 .foregroundColor(AppTheme.dealTypeColors[ad.dealType] ?? AppTheme.accent)
                                 .clipShape(Capsule())
@@ -58,7 +57,7 @@ struct AdCardRow: View {
 
                         HStack {
                             Text(ad.priceText)
-                                .font(.subheadline.bold())
+                                .font(.footnote.bold())
                                 .foregroundColor(AppTheme.gold)
 
                             if sellerRating != 0 {
@@ -71,10 +70,11 @@ struct AdCardRow: View {
                                 .foregroundColor(sellerRating < 0 ? .red : AppTheme.accent)
                             }
 
-                            Spacer()
                             Text(ad.timeAgoText)
                                 .font(.caption)
                                 .foregroundColor(AppTheme.textSecondary)
+
+                            Spacer()
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -83,24 +83,26 @@ struct AdCardRow: View {
             }
             .buttonStyle(.plain)
 
-            if ad.sellerId != authViewModel.user?.uid {
-                SubscribeButton(authorId: ad.sellerId, onRequireAuth: { showAuth = true })
-                    .padding(8)
-                    .background(AppTheme.background.opacity(0.6))
-                    .clipShape(Circle())
-            }
+            VStack(spacing: 6) {
+                if ad.sellerId != authViewModel.user?.uid {
+                    SubscribeButton(authorId: ad.sellerId, onRequireAuth: { showAuth = true })
+                        .padding(8)
+                        .background(AppTheme.background.opacity(0.6))
+                        .clipShape(Circle())
+                }
 
-            Button {
-                toggleFavorite()
-            } label: {
-                Image(systemName: isFavorite ? "heart.fill" : "heart")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(isFavorite ? .red : AppTheme.textSecondary)
-                    .padding(8)
-                    .background(AppTheme.background.opacity(0.6))
-                    .clipShape(Circle())
+                Button {
+                    toggleFavorite()
+                } label: {
+                    Image(systemName: isFavorite ? "heart.fill" : "heart")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(isFavorite ? .red : AppTheme.textSecondary)
+                        .padding(8)
+                        .background(AppTheme.background.opacity(0.6))
+                        .clipShape(Circle())
+                }
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
         }
         .padding(12)
         .background(AppTheme.card)
