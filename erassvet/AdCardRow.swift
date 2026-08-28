@@ -36,6 +36,7 @@ struct AdCardRow: View {
                             .font(.subheadline.bold())
                             .foregroundColor(AppTheme.textPrimary)
                             .lineLimit(1)
+                            .minimumScaleFactor(0.6)
 
                         HStack(spacing: 6) {
                             Text(ad.category)
