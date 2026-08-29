@@ -4,8 +4,24 @@
 //
 
 import SwiftUI
+#if canImport(UIKit)
+import UIKit
+#endif
 
 extension Color {
+    /// Round-trips a `ColorPicker`-selected `Color` back to a hex string for
+    /// storage in Firestore (`CategoryStyleEditorView`). Resolved against the
+    /// app's fixed dark theme, so this stays consistent across devices.
+    func toHex() -> String {
+        let uiColor = UIColor(self)
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        uiColor.getRed(&r, green: &g, blue: &b, alpha: &a)
+        return String(
+            format: "%02X%02X%02X",
+            Int(round(r * 255)), Int(round(g * 255)), Int(round(b * 255))
+        )
+    }
+
     init(hex: String) {
         let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
         var int: UInt64 = 0
@@ -61,8 +77,12 @@ enum AppTheme {
         Color(hex: "A03DBF")
     ]
 
+    @MainActor
     static func colorForCategory(_ category: String) -> Color {
         guard !category.isEmpty else { return accent }
+        if let hex = CategoryStyleStore.shared.colorHex(for: category) {
+            return Color(hex: hex)
+        }
         let hash = category.unicodeScalars.reduce(0) { ($0 &* 31) &+ Int($1.value) }
         let index = abs(hash) % categoryPalette.count
         return categoryPalette[index]

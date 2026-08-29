@@ -37,6 +37,11 @@ struct BlogPost: Identifiable, Hashable {
     let authorId: String
     let authorName: String
     let authorPhotoURL: String?
+    /// Snapshotted at post-creation time from the author's role at that
+    /// moment — mirrors `authorName`'s denormalization approach rather than
+    /// a live lookup, since a public blog post can't read another user's
+    /// restricted "users/{uid}" doc to check their *current* role.
+    let authorIsAdmin: Bool
     let text: String
     let imageURLs: [String]
     let status: BlogPostStatus
@@ -46,6 +51,13 @@ struct BlogPost: Identifiable, Hashable {
     let views: Int
 
     var hasImage: Bool { !imageURLs.isEmpty }
+
+    /// What to actually show as the author — admin-authored posts read as
+    /// coming from "Администрация сервиса" instead of the admin's personal
+    /// name, everywhere `authorName` would otherwise be rendered.
+    var displayAuthorName: String {
+        authorIsAdmin ? "Администрация сервиса" : authorName
+    }
 
     var timeAgoText: String {
         guard let createdAt else { return "" }
@@ -65,6 +77,7 @@ struct BlogPost: Identifiable, Hashable {
         self.authorId = authorId
         self.authorName = data["authorName"] as? String ?? "Пользователь"
         self.authorPhotoURL = data["authorPhotoURL"] as? String
+        self.authorIsAdmin = data["authorIsAdmin"] as? Bool ?? false
         self.text = text
         if let urls = data["imageURLs"] as? [String] {
             self.imageURLs = urls
@@ -89,6 +102,7 @@ struct BlogPost: Identifiable, Hashable {
         authorId: String,
         authorName: String,
         authorPhotoURL: String?,
+        authorIsAdmin: Bool,
         text: String,
         imageURLs: [String],
         initialStatus: BlogPostStatus
@@ -97,6 +111,7 @@ struct BlogPost: Identifiable, Hashable {
             "authorId": authorId,
             "authorName": authorName,
             "authorPhotoURL": authorPhotoURL as Any,
+            "authorIsAdmin": authorIsAdmin,
             "text": text,
             "imageURLs": imageURLs,
             "status": initialStatus.rawValue,

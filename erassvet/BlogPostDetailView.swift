@@ -113,7 +113,7 @@ struct BlogPostDetailView: View {
                         if let image = phase.image {
                             image.resizable().scaledToFill()
                         } else {
-                            Text(String(post.authorName.prefix(1)).uppercased())
+                            Text(String(post.displayAuthorName.prefix(1)).uppercased())
                                 .font(.footnote.bold())
                                 .foregroundColor(AppTheme.accent)
                         }
@@ -121,14 +121,14 @@ struct BlogPostDetailView: View {
                     .frame(width: 36, height: 36)
                     .clipShape(Circle())
                 } else {
-                    Text(String(post.authorName.prefix(1)).uppercased())
+                    Text(String(post.displayAuthorName.prefix(1)).uppercased())
                         .font(.footnote.bold())
                         .foregroundColor(AppTheme.accent)
                 }
             }
 
             VStack(alignment: .leading, spacing: 1) {
-                Text(post.authorName)
+                Text(post.displayAuthorName)
                     .font(.subheadline.bold())
                     .foregroundColor(AppTheme.textPrimary)
                 if !post.timeAgoText.isEmpty {
@@ -224,7 +224,7 @@ struct BlogPostDetailView: View {
     }
 
     private var shareText: String {
-        "\(post.authorName) в блоге eRassvet:\n\n\(post.text)"
+        "\(post.displayAuthorName) в блоге eRassvet:\n\n\(post.text)"
     }
 
     private var imageSlider: some View {

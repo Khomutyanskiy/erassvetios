@@ -12,11 +12,12 @@ struct AdminCategoriesView: View {
     @StateObject private var categoriesViewModel = CategoriesViewModel()
     @State private var newCategoryTitle = ""
     @State private var categoryPendingDelete: AppCategory?
+    @State private var editingStyleFor: AppCategory?
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
-                Text("Эти категории будут доступны при создании объявления и в фильтрах ленты.")
+                Text("Эти категории будут доступны при создании объявления и в фильтрах ленты. Нажмите на категорию, чтобы задать её цвет.")
                     .font(.footnote)
                     .foregroundColor(AppTheme.textSecondary)
 
@@ -77,16 +78,35 @@ struct AdminCategoriesView: View {
                             if index > 0 {
                                 Divider().overlay(AppTheme.cardBorder)
                             }
-                            HStack {
-                                Text(category.title)
-                                    .foregroundColor(AppTheme.textPrimary)
-                                Spacer()
+                            HStack(spacing: 12) {
+                                Button {
+                                    editingStyleFor = category
+                                } label: {
+                                    HStack(spacing: 12) {
+                                        Circle()
+                                            .fill(AppTheme.colorForCategory(category.title))
+                                            .frame(width: 20, height: 20)
+
+                                        Text(category.title)
+                                            .foregroundColor(AppTheme.textPrimary)
+
+                                        Spacer()
+
+                                        Image(systemName: "chevron.right")
+                                            .font(.footnote)
+                                            .foregroundColor(AppTheme.textSecondary)
+                                    }
+                                    .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
+
                                 Button {
                                     categoryPendingDelete = category
                                 } label: {
                                     Image(systemName: "trash")
                                         .foregroundColor(.red)
                                 }
+                                .buttonStyle(.plain)
                             }
                             .padding(14)
                         }
@@ -117,6 +137,9 @@ struct AdminCategoriesView: View {
             }
         } message: {
             Text("Объявления в этой категории не удаляются, но категория пропадёт из выбора.")
+        }
+        .sheet(item: $editingStyleFor) { category in
+            CategoryStyleEditorView(category: category, categoriesViewModel: categoriesViewModel)
         }
     }
 }

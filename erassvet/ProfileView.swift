@@ -12,6 +12,7 @@ struct ProfileView: View {
     @State private var showAuth = false
     @State private var notificationsEnabled = true
     @State private var isMyListingsExpanded = true
+    @State private var isSettingsExpanded = true
     @State private var showHelp = false
     @State private var showAdminPanel = false
     @State private var showDeleteAccount = false
@@ -104,38 +105,58 @@ struct ProfileView: View {
                             }
                         }
 
-                        Text("Настройки")
-                            .font(.title3.bold())
-                            .foregroundColor(AppTheme.textPrimary)
-
-                        VStack(spacing: 0) {
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.25)) {
+                                isSettingsExpanded.toggle()
+                            }
+                        } label: {
                             HStack {
-                                Image(systemName: "bell")
-                                    .foregroundColor(AppTheme.accent)
-                                    .frame(width: 24)
-                                Text("Уведомления")
+                                Text("Настройки")
+                                    .font(.title3.bold())
                                     .foregroundColor(AppTheme.textPrimary)
                                 Spacer()
-                                Toggle("", isOn: $notificationsEnabled)
-                                    .labelsHidden()
-                                    .tint(AppTheme.accent)
+                                Image(systemName: "chevron.down")
+                                    .font(.subheadline.bold())
+                                    .foregroundColor(AppTheme.textSecondary)
+                                    .rotationEffect(.degrees(isSettingsExpanded ? 0 : -90))
                             }
-                            .padding(16)
+                        }
+                        .buttonStyle(.plain)
 
-                            Divider().overlay(AppTheme.cardBorder)
+                        if isSettingsExpanded {
+                            VStack(spacing: 0) {
+                                HStack {
+                                    Image(systemName: "bell")
+                                        .foregroundColor(AppTheme.accent)
+                                        .frame(width: 24)
+                                    Text("Уведомления")
+                                        .foregroundColor(AppTheme.textPrimary)
+                                    Spacer()
+                                    Toggle("", isOn: $notificationsEnabled)
+                                        .labelsHidden()
+                                        .tint(AppTheme.accent)
+                                }
+                                .padding(16)
 
-                            SettingsRow(icon: "questionmark.circle", title: "Помощь", showChevron: true) {
-                                showHelp = true
+                                Divider().overlay(AppTheme.cardBorder)
+
+                                SettingsRow(icon: "questionmark.circle", title: "Помощь", showChevron: true) {
+                                    showHelp = true
+                                }
+
+                                Divider().overlay(AppTheme.cardBorder)
+
+                                SettingsRow(icon: "doc.text", title: "Условия использования", showChevron: true) {
+                                    showTerms = true
+                                }
                             }
+                            .background(AppTheme.card)
+                            .clipShape(RoundedRectangle(cornerRadius: 16))
+                            .overlay(RoundedRectangle(cornerRadius: 16).stroke(AppTheme.cardBorder, lineWidth: 1))
+                            .transition(.opacity.combined(with: .move(edge: .top)))
+                        }
 
-                            Divider().overlay(AppTheme.cardBorder)
-
-                            SettingsRow(icon: "doc.text", title: "Условия использования", showChevron: true) {
-                                showTerms = true
-                            }
-
-                            Divider().overlay(AppTheme.cardBorder)
-
+                        VStack(spacing: 0) {
                             Button {
                                 authViewModel.signOut()
                             } label: {
@@ -327,10 +348,17 @@ private struct ProfileHeader: View {
                 }
 
                 Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.footnote)
+                    .foregroundColor(AppTheme.textSecondary)
             }
+            .padding(14)
+            .background(AppTheme.card)
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .overlay(RoundedRectangle(cornerRadius: 16).stroke(AppTheme.cardBorder, lineWidth: 1))
         }
         .buttonStyle(.plain)
-        .padding(.top, 4)
         .sheet(isPresented: $showEditProfile) {
             EditProfileView().environmentObject(authViewModel)
         }
@@ -363,13 +391,15 @@ private struct MyAdRow: View {
         }
     }
 
+    private var displayPriceText: String {
+        ad.priceText == "Договорная" ? "Цена договорная" : ad.priceText
+    }
+
     var body: some View {
         Button {
             onTap()
         } label: {
             HStack(spacing: 14) {
-                thumbnail
-
                 VStack(alignment: .leading, spacing: 6) {
                     Text(ad.title)
                         .font(.subheadline.bold())
@@ -381,9 +411,9 @@ private struct MyAdRow: View {
                             .font(.caption)
                             .foregroundColor(statusColor)
 
-                        Text(ad.priceText)
-                            .font(.subheadline.bold())
-                            .foregroundColor(AppTheme.gold)
+                        Text(displayPriceText)
+                            .font(.subheadline)
+                            .foregroundColor(AppTheme.textSecondary)
                     }
 
                     HStack(spacing: 4) {
@@ -407,34 +437,6 @@ private struct MyAdRow: View {
             .overlay(RoundedRectangle(cornerRadius: 16).stroke(AppTheme.cardBorder, lineWidth: 1))
         }
         .buttonStyle(.plain)
-    }
-
-    @ViewBuilder
-    private var thumbnail: some View {
-        if let firstURL = ad.imageURLs.first, let url = URL(string: firstURL) {
-            AsyncImage(url: url) { phase in
-                if let image = phase.image {
-                    image.resizable().scaledToFill()
-                } else {
-                    thumbnailPlaceholder
-                }
-            }
-            .frame(width: 56, height: 56)
-            .clipShape(RoundedRectangle(cornerRadius: 14))
-        } else {
-            thumbnailPlaceholder
-        }
-    }
-
-    private var thumbnailPlaceholder: some View {
-        RoundedRectangle(cornerRadius: 14)
-            .fill((AppTheme.colorForCategory(ad.category)).opacity(0.18))
-            .frame(width: 56, height: 56)
-            .overlay(
-                Image(systemName: ad.iconName)
-                    .foregroundColor(AppTheme.colorForCategory(ad.category))
-                    .font(.system(size: 20))
-            )
     }
 }
 

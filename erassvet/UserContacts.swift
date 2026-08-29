@@ -60,6 +60,14 @@ struct ContactItem: Identifiable, Equatable {
     let title: String
     let value: String
     let urlString: String
+
+    /// What to show as the row's trailing action indicator instead of a
+    /// plain chevron — a phone icon for contacts that dial out (`tel:`
+    /// links), a generic messenger icon for everything else (Telegram,
+    /// WhatsApp, MAX, email, custom links).
+    var actionIcon: String {
+        urlString.lowercased().hasPrefix("tel:") ? "phone.fill" : "bubble.left.and.bubble.right.fill"
+    }
 }
 
 extension UserContacts {

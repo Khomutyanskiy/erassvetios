@@ -18,6 +18,7 @@ struct BlogView: View {
     @State private var pendingDelete: BlogPost?
     @State private var editingPost: BlogPost?
     @State private var openedPost: BlogPost?
+    @State private var showSubscriptions = false
 
     /// Posts by an author the current user has blocked disappear from the
     /// feed immediately (client-side filter — see `AuthViewModel.blockUser`).
@@ -32,7 +33,15 @@ struct BlogView: View {
                     PageHeader(
                         title: "Блог",
                         trailingIcon: "square.and.pencil",
-                        trailingAction: { startCreatingPost() }
+                        trailingAction: { startCreatingPost() },
+                        secondaryTrailingIcon: "bell",
+                        secondaryTrailingAction: {
+                            if authViewModel.user == nil {
+                                showAuth = true
+                            } else {
+                                showSubscriptions = true
+                            }
+                        }
                     )
                     .padding(.top, 8)
 
@@ -103,6 +112,10 @@ struct BlogView: View {
                 BlogPostDetailView(post: post, blogViewModel: viewModel)
                     .environmentObject(authViewModel)
             }
+            .sheet(isPresented: $showSubscriptions) {
+                MyBlogSubscriptionsView()
+                    .environmentObject(authViewModel)
+            }
             .alert("Удалить пост?", isPresented: Binding(
                 get: { pendingDelete != nil },
                 set: { if !$0 { pendingDelete = nil } }
@@ -131,7 +144,9 @@ struct BlogView: View {
     }
 }
 
-private struct BlogPostCard: View {
+/// Not private — also reused by `MyBlogSubscriptionsView` to render posts
+/// from subscribed authors with identical styling/behavior.
+struct BlogPostCard: View {
     let post: BlogPost
     let isOwnPost: Bool
     let currentUid: String?
@@ -143,7 +158,7 @@ private struct BlogPostCard: View {
     @StateObject private var likeViewModel = BlogLikeViewModel()
 
     private var shareText: String {
-        "\(post.authorName) в блоге eRassvet:\n\n\(post.text)"
+        "\(post.displayAuthorName) в блоге eRassvet:\n\n\(post.text)"
     }
 
     var body: some View {
@@ -159,7 +174,7 @@ private struct BlogPostCard: View {
                             if let image = phase.image {
                                 image.resizable().scaledToFill()
                             } else {
-                                Text(String(post.authorName.prefix(1)).uppercased())
+                                Text(String(post.displayAuthorName.prefix(1)).uppercased())
                                     .font(.footnote.bold())
                                     .foregroundColor(AppTheme.accent)
                             }
@@ -167,14 +182,14 @@ private struct BlogPostCard: View {
                         .frame(width: 36, height: 36)
                         .clipShape(Circle())
                     } else {
-                        Text(String(post.authorName.prefix(1)).uppercased())
+                        Text(String(post.displayAuthorName.prefix(1)).uppercased())
                             .font(.footnote.bold())
                             .foregroundColor(AppTheme.accent)
                     }
                 }
 
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(post.authorName)
+                    Text(post.displayAuthorName)
                         .font(.subheadline.bold())
                         .foregroundColor(AppTheme.textPrimary)
                     if !post.timeAgoText.isEmpty {

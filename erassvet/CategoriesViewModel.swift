@@ -36,7 +36,11 @@ final class CategoriesViewModel: ObservableObject {
                 self.errorMessage = nil
                 self.categories = snapshot?.documents.compactMap { doc in
                     guard let title = doc.data()["title"] as? String else { return nil }
-                    return AppCategory(id: doc.documentID, title: title)
+                    return AppCategory(
+                        id: doc.documentID,
+                        title: title,
+                        colorHex: doc.data()["colorHex"] as? String
+                    )
                 } ?? []
             }
     }
@@ -61,6 +65,29 @@ final class CategoriesViewModel: ObservableObject {
                 "title": trimmed,
                 "createdAt": FieldValue.serverTimestamp()
             ])
+            isSaving = false
+            return true
+        } catch {
+            errorMessage = error.localizedDescription
+            isSaving = false
+            return false
+        }
+    }
+
+    /// Saves the admin-picked color override for a category. Pass `nil` to
+    /// clear it back to the automatic default. Also clears any leftover
+    /// icon fields from the old icon-picker feature. Only succeeds for
+    /// admins (enforced by Firestore rules).
+    func updateStyle(id: String, colorHex: String?) async -> Bool {
+        isSaving = true
+        errorMessage = nil
+        do {
+            let data: [String: Any] = [
+                "colorHex": colorHex ?? FieldValue.delete(),
+                "iconName": FieldValue.delete(),
+                "iconURL": FieldValue.delete()
+            ]
+            try await Firestore.firestore().collection("categories").document(id).setData(data, merge: true)
             isSaving = false
             return true
         } catch {

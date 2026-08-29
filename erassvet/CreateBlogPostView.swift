@@ -236,6 +236,7 @@ struct CreateBlogPostView: View {
                 authorId: user.uid,
                 authorName: user.displayNameOrFallback,
                 authorPhotoURL: user.photoURL?.absoluteString,
+                authorIsAdmin: authViewModel.isAdmin,
                 text: text,
                 images: images
             )

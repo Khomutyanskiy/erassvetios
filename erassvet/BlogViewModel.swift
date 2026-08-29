@@ -78,7 +78,7 @@ final class BlogViewModel: ObservableObject {
     }
 
     @discardableResult
-    func createPost(authorId: String, authorName: String, authorPhotoURL: String?, text: String, images: [UIImage]) async -> Bool {
+    func createPost(authorId: String, authorName: String, authorPhotoURL: String?, authorIsAdmin: Bool, text: String, images: [UIImage]) async -> Bool {
         isSaving = true
         errorMessage = nil
         defer { isSaving = false }
@@ -96,6 +96,7 @@ final class BlogViewModel: ObservableObject {
                 authorId: authorId,
                 authorName: authorName,
                 authorPhotoURL: authorPhotoURL,
+                authorIsAdmin: authorIsAdmin,
                 text: text.trimmingCharacters(in: .whitespacesAndNewlines),
                 imageURLs: imageURLs,
                 initialStatus: status

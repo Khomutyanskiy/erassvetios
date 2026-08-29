@@ -16,7 +16,10 @@ final class ImageCache {
 
     private let cache: NSCache<NSString, UIImage> = {
         let cache = NSCache<NSString, UIImage>()
-        cache.countLimit = 10
+        // Feed shows ~20 ad cards per screenful of scrolling, plus blog
+        // photos share this same cache — 10 was evicting feed thumbnails
+        // almost immediately, causing repeat downloads/flicker on scroll.
+        cache.countLimit = 60
         return cache
     }()
 

@@ -199,14 +199,16 @@ private struct PendingAdRow: View {
                     if let image = phase.image {
                         image.resizable().scaledToFill()
                     } else {
-                        Image(systemName: ad.iconName)
+                        Image(systemName: "photo")
+                            .font(.system(size: 20))
                             .foregroundColor(AppTheme.textSecondary)
                     }
                 }
                 .frame(width: 52, height: 52)
                 .clipShape(RoundedRectangle(cornerRadius: 12))
             } else {
-                Image(systemName: ad.iconName)
+                Image(systemName: "photo")
+                    .font(.system(size: 20))
                     .foregroundColor(AppTheme.textSecondary)
             }
         }

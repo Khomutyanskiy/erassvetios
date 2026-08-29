@@ -35,6 +35,7 @@ struct FeedView: View {
     @State private var showAllCategories = false
     @State private var showSearch = false
     @State private var showFavorites = false
+    @State private var showSubscriptions = false
 
     private var displayCategories: [AppCategory] {
         [.allFilter] + categoriesViewModel.categories
@@ -93,7 +94,15 @@ struct FeedView: View {
                             }
                         },
                         secondaryTrailingIcon: "heart",
-                        secondaryTrailingAction: { showFavorites = true }
+                        secondaryTrailingAction: { showFavorites = true },
+                        tertiaryTrailingIcon: "bell",
+                        tertiaryTrailingAction: {
+                            if authViewModel.user == nil {
+                                showAuth = true
+                            } else {
+                                showSubscriptions = true
+                            }
+                        }
                     )
                     .padding(.top, 8)
 
@@ -152,7 +161,8 @@ struct FeedView: View {
                                         ForEach(displayCategories) { category in
                                             CategoryChip(
                                                 title: category.title,
-                                                isSelected: selectedCategory == category.title
+                                                isSelected: selectedCategory == category.title,
+                                                tint: category.title == "Все" ? AppTheme.accent : AppTheme.colorForCategory(category.title)
                                             )
                                             .id(category.title)
                                             .onTapGesture {
@@ -276,6 +286,10 @@ struct FeedView: View {
                 FavoritesView()
                     .environmentObject(authViewModel)
             }
+            .sheet(isPresented: $showSubscriptions) {
+                MySubscriptionsView()
+                    .environmentObject(authViewModel)
+            }
             .onAppear {
                 adsListViewModel.startListening()
                 categoriesViewModel.startListening()
@@ -331,7 +345,8 @@ private struct CategoryPickerSheet: View {
                 ForEach(categories) { category in
                     CategoryChip(
                         title: category.title,
-                        isSelected: selectedCategory == category.title
+                        isSelected: selectedCategory == category.title,
+                        tint: category.title == "Все" ? AppTheme.accent : AppTheme.colorForCategory(category.title)
                     )
                     .fixedSize()
                     .onTapGesture {

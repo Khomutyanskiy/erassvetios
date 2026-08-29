@@ -97,9 +97,9 @@ private struct BottomTabBar: View {
                 showPostAd = true
             } label: {
                 Image(systemName: "plus")
-                    .font(.system(size: 19, weight: .semibold))
+                    .font(.system(size: 21, weight: .semibold))
                     .foregroundColor(.white)
-                    .frame(width: 48, height: 48)
+                    .frame(width: 54, height: 54)
                     .background(
                         LinearGradient(
                             colors: [AppTheme.accent, Color(hex: "6FA3FF")],
@@ -110,7 +110,6 @@ private struct BottomTabBar: View {
                     .clipShape(Circle())
                     .shadow(color: AppTheme.accent.opacity(0.55), radius: 10, y: 4)
             }
-            .offset(y: -12)
             .padding(.horizontal, 2)
 
             TabBarButton(icon: "text.bubble", title: "Блог", tab: .blog, selectedTab: $selectedTab, namespace: tabAnimation)

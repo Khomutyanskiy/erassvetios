@@ -35,23 +35,35 @@ struct AdDetailView: View {
 
     private var isFavorite: Bool { favoritesViewModel.isFavorite(ad.id) }
 
+    /// Spelled out fully here (unlike the compact feed card) since there's
+    /// room, and "Цена договорная" reads clearer on its own than "Договорная".
+    private var detailPriceText: String {
+        ad.priceText == "Договорная" ? "Цена договорная" : ad.priceText
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 imagePlaceholder
 
                 VStack(alignment: .leading, spacing: 10) {
-                    HStack(alignment: .top, spacing: 12) {
+                    ZStack(alignment: .topTrailing) {
                         Text(ad.title)
                             .font(.title2.bold())
                             .foregroundColor(AppTheme.textPrimary)
+                            .padding(.trailing, isOwnAd ? 40 : 76)
+                            .frame(maxWidth: .infinity, alignment: .leading)
 
-                        Spacer()
+                        HStack(spacing: 16) {
+                            if !isOwnAd {
+                                SubscribeButton(authorId: ad.sellerId, onRequireAuth: { showAuth = true })
+                            }
 
-                        favoriteButton
+                            favoriteButton
+                        }
                     }
 
-                    Text(ad.priceText)
+                    Text(detailPriceText)
                         .font(.title3.bold())
                         .foregroundColor(AppTheme.gold)
 
@@ -60,16 +72,16 @@ struct AdDetailView: View {
                             .font(.caption)
                             .padding(.horizontal, 10)
                             .padding(.vertical, 4)
-                            .background((AppTheme.colorForCategory(ad.category)).opacity(0.18))
-                            .foregroundColor(AppTheme.colorForCategory(ad.category))
+                            .background(AppTheme.textSecondary.opacity(0.15))
+                            .foregroundColor(AppTheme.textSecondary)
                             .clipShape(Capsule())
 
                         Text(ad.dealType.title)
                             .font(.caption)
                             .padding(.horizontal, 10)
                             .padding(.vertical, 4)
-                            .background((AppTheme.dealTypeColors[ad.dealType] ?? AppTheme.accent).opacity(0.18))
-                            .foregroundColor(AppTheme.dealTypeColors[ad.dealType] ?? AppTheme.accent)
+                            .background(AppTheme.textSecondary.opacity(0.15))
+                            .foregroundColor(AppTheme.textSecondary)
                             .clipShape(Capsule())
 
                         if !ad.timeAgoText.isEmpty {
@@ -179,8 +191,7 @@ struct AdDetailView: View {
                         } else if phase.error != nil {
                             imageFallback
                         } else {
-                            ProgressView().tint(AppTheme.accent)
-                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            ShimmerPlaceholder()
                         }
                     }
                     .frame(maxWidth: .infinity)
@@ -209,7 +220,7 @@ struct AdDetailView: View {
     /// link, no network) — never for ads that simply have no photos.
     private var imageFallback: some View {
         VStack(spacing: 8) {
-            Image(systemName: ad.iconName)
+            Image(systemName: "photo")
                 .font(.system(size: 40))
                 .foregroundColor(AppTheme.colorForCategory(ad.category))
             Text("Фото пока недоступно")
@@ -269,10 +280,6 @@ struct AdDetailView: View {
             Image(systemName: isFavorite ? "heart.fill" : "heart")
                 .font(.system(size: 18, weight: .semibold))
                 .foregroundColor(isFavorite ? .red : AppTheme.textSecondary)
-                .padding(10)
-                .background(AppTheme.card)
-                .clipShape(Circle())
-                .overlay(Circle().stroke(AppTheme.cardBorder, lineWidth: 1))
         }
     }
 
@@ -313,7 +320,6 @@ struct AdDetailView: View {
             Spacer()
 
             if !isOwnAd {
-                SubscribeButton(authorId: ad.sellerId, onRequireAuth: { showAuth = true })
                 reportMenu
             }
         }
@@ -485,9 +491,9 @@ struct AdDetailView: View {
 
                 Spacer()
 
-                Image(systemName: "chevron.right")
-                    .font(.footnote)
-                    .foregroundColor(AppTheme.textSecondary)
+                Image(systemName: item.actionIcon)
+                    .font(.subheadline)
+                    .foregroundColor(item.tint)
             }
             .padding(16)
             .background(AppTheme.card)
@@ -535,9 +541,9 @@ struct AdDetailView: View {
 
                             Spacer()
 
-                            Image(systemName: "chevron.right")
-                                .font(.footnote)
-                                .foregroundColor(AppTheme.textSecondary)
+                            Image(systemName: item.actionIcon)
+                                .font(.subheadline)
+                                .foregroundColor(item.tint)
                         }
                         .padding(14)
                     }

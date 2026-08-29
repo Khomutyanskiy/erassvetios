@@ -175,8 +175,6 @@ struct PostAdView: View {
     private var form: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                imagePlaceholder
-
                 if isEditing {
                     managementSection
                 }
@@ -243,9 +241,7 @@ struct PostAdView: View {
                     }
                 }
 
-                addressSection
-
-                contactsSection
+                imagePlaceholder
 
                 fieldBlock(title: "Описание") {
                     TextEditor(text: $description)
@@ -253,6 +249,10 @@ struct PostAdView: View {
                         .scrollContentBackground(.hidden)
                         .foregroundColor(AppTheme.textPrimary)
                 }
+
+                addressSection
+
+                contactsSection
 
                 if let error = adsViewModel.errorMessage {
                     Text(error)
@@ -286,7 +286,7 @@ struct PostAdView: View {
 
     private var addressSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Адрес")
+            Text("Адрес (необязательно)")
                 .font(.footnote)
                 .foregroundColor(AppTheme.textSecondary)
 

@@ -27,6 +27,9 @@ struct Listing: Identifiable {
 struct AppCategory: Identifiable, Hashable {
     let id: String
     let title: String
+    /// Admin-picked override color (hex, no "#"). `nil` means "use the
+    /// automatic hash-based color" — see `AppTheme.colorForCategory`.
+    var colorHex: String? = nil
 
     /// Client-only pseudo-category used as the "show everything" filter
     /// chip on the feed. Never stored in Firestore.

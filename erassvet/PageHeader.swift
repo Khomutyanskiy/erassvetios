@@ -20,6 +20,11 @@ struct PageHeader: View {
     /// to nil so existing single-icon call sites are unaffected.
     var secondaryTrailingIcon: String? = nil
     var secondaryTrailingAction: (() -> Void)? = nil
+    /// A third trailing icon, rendered before `secondaryTrailingIcon` (e.g.
+    /// Feed's subscriptions shortcut sitting left of favorites/search).
+    /// Defaults to nil so existing call sites are unaffected.
+    var tertiaryTrailingIcon: String? = nil
+    var tertiaryTrailingAction: (() -> Void)? = nil
 
     var body: some View {
         ZStack {
@@ -28,9 +33,20 @@ struct PageHeader: View {
                 .foregroundColor(AppTheme.textPrimary)
                 .frame(maxWidth: .infinity, alignment: .center)
 
-            if trailingIcon != nil || secondaryTrailingIcon != nil {
+            if trailingIcon != nil || secondaryTrailingIcon != nil || tertiaryTrailingIcon != nil {
                 HStack(spacing: 4) {
                     Spacer()
+
+                    if let tertiaryTrailingIcon {
+                        Button {
+                            tertiaryTrailingAction?()
+                        } label: {
+                            Image(systemName: tertiaryTrailingIcon)
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundColor(AppTheme.textPrimary)
+                                .frame(width: 32, height: 32)
+                        }
+                    }
 
                     if let secondaryTrailingIcon {
                         Button {

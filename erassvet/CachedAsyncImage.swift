@@ -13,6 +13,10 @@ import SwiftUI
 struct CachedAsyncImage: View {
     let urlString: String
     var contentMode: ContentMode = .fill
+    /// Set for admin-uploaded category icons — renders the image as a
+    /// template so `.foregroundColor` on this view tints it (using its
+    /// alpha channel as the shape), just like an SF Symbol.
+    var renderAsTemplate: Bool = false
 
     @State private var image: UIImage?
 
@@ -20,6 +24,7 @@ struct CachedAsyncImage: View {
         ZStack {
             if let image {
                 Image(uiImage: image)
+                    .renderingMode(renderAsTemplate ? .template : .original)
                     .resizable()
                     .aspectRatio(contentMode: contentMode)
             } else {

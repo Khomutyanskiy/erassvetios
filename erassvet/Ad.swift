@@ -181,18 +181,6 @@ struct Ad: Identifiable, Hashable {
         return "\(views) \(word)"
     }
 
-    var iconName: String {
-        switch category {
-        case "Строительство": return "shippingbox.fill"
-        case "Недвижимость": return "building.2.fill"
-        case "Транспорт": return "car.fill"
-        case "Продукты": return "leaf.fill"
-        case "Обучение": return "book.fill"
-        case "Электроника": return "iphone"
-        default: return "tag.fill"
-        }
-    }
-
     var timeAgoText: String {
         guard let createdAt else { return "" }
         let formatter = RelativeDateTimeFormatter()
